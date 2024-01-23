@@ -1,0 +1,162 @@
+cabal-version:      3.4
+name:               Hexxagon-Game-Plutarch
+version:            0.1.0.0
+synopsis:           Hexxagon game on the Cardano Blockchain
+-- description:
+-- homepage:
+license:            NONE
+author:             Dr-Mazen-Khaddaj, Andrew Garrett Wright
+maintainer:         MazenKhaddaj@outlook.com
+-- copyright:
+category:           Blockchain, Cardano, Game
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+flag optimized
+    description:
+        If optimized is True, some checks are disabled. Disable checks to create optimized scripts.
+
+    default:    False
+    manual:     True
+
+common language
+
+    ghc-options:
+        -Werror -Wall -Wcompat -Wincomplete-uni-patterns
+        -Wno-unused-do-bind -Wno-partial-type-signatures
+        -Wmissing-export-lists -Wincomplete-record-updates
+        -Wmissing-deriving-strategies -Wno-name-shadowing -Wunused-foralls
+        -fprint-explicit-foralls -fprint-explicit-kinds -Wunused-do-bind
+
+    default-extensions:
+        NoStarIsType
+        BangPatterns
+        BinaryLiterals
+        ConstrainedClassMethods
+        ConstraintKinds
+        DataKinds
+        DeriveAnyClass
+        DeriveDataTypeable
+        DeriveFoldable
+        DeriveFunctor
+        DeriveGeneric
+        DeriveLift
+        DeriveTraversable
+        DerivingStrategies
+        DerivingVia
+        DoAndIfThenElse
+        DuplicateRecordFields
+        EmptyCase
+        EmptyDataDecls
+        EmptyDataDeriving
+        ExistentialQuantification
+        ExplicitForAll
+        FlexibleContexts
+        FlexibleInstances
+        ForeignFunctionInterface
+        GADTSyntax
+        GeneralisedNewtypeDeriving
+        HexFloatLiterals
+        ImplicitPrelude
+        ImportQualifiedPost
+        InstanceSigs
+        KindSignatures
+        LambdaCase
+        MonomorphismRestriction
+        MultiParamTypeClasses
+        NamedFieldPuns
+        NamedWildCards
+        NumericUnderscores
+        OverloadedLabels
+        OverloadedStrings
+        PackageImports
+        PartialTypeSignatures
+        PatternGuards
+        PolyKinds
+        PostfixOperators
+        QualifiedDo
+        RankNTypes
+        RelaxedPolyRec
+        ScopedTypeVariables
+        StandaloneDeriving
+        StandaloneKindSignatures
+        TupleSections
+        TypeApplications
+        TypeFamilies
+        TypeOperators
+        TypeSynonymInstances
+        UndecidableInstances
+        ViewPatterns
+        NoFieldSelectors
+        OverloadedRecordDot
+
+  default-language: GHC2021
+
+common dependencies
+    build-depends:    base
+                    , base16-bytestring
+                    , aeson
+                    , aeson-pretty
+                    , bytestring
+                    , cardano-binary
+                    , cborg
+                    , data-default
+                    , directory
+                    , liqwid-plutarch-extra
+                    , liqwid-script-export
+                    , plutarch
+                    , plutarch-extra
+                    , plutus-core
+                    , plutus-ledger-api
+                    , plutus-tx
+                    , ply-core
+                    , ply-plutarch
+                    , serialise
+                    , text
+
+common test-dependencies
+    build-depends:    containers
+                    , hedgehog
+                    , hedgehog-quickcheck
+                    , plutarch-context-builder
+                    , plutarch-quickcheck
+                    , plutarch-unit
+                    , QuickCheck
+                    , tasty
+                    , tasty-hedgehog
+                    , tasty-hunit
+                    , tasty-quickcheck
+                    , text
+
+library
+    import:           language, dependencies
+    exposed-modules:  MyLib
+    -- other-modules:
+    -- other-extensions:
+    -- build-depends:    base ^>=4.17.2.1
+    hs-source-dirs:   src
+
+    if flag(optimized)
+        hs-source-dirs: src-optimized
+    else
+        hs-source-dirs: src-checked
+
+executable Hexxagon-Game-Plutarch
+    import:           language, dependencies
+    main-is:          Main.hs
+    -- other-modules:
+    -- other-extensions:
+    build-depends:    Hexxagon-Game-Plutarch
+
+    hs-source-dirs:   app
+
+test-suite Hexxagon-Game-Plutarch-test
+    import:           language, dependencies, test-dependencies
+    main-is:          Main.hs
+    type:             exitcode-stdio-1.0
+    -- other-modules:
+    -- other-extensions:
+    build-depends:    Hexxagon-Game-Plutarch
+
+    hs-source-dirs:   test
