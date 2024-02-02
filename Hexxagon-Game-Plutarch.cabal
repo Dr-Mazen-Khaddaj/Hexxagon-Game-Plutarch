@@ -132,10 +132,13 @@ common test-dependencies
 library
     import:           language, dependencies
     exposed-modules:  MyLib
+                      PDataTypes
+                      DataTypes
     -- other-modules:
     -- other-extensions:
     -- build-depends:    base ^>=4.17.2.1
     hs-source-dirs:   src
+                      Common
 
     if flag(optimized)
         hs-source-dirs: src-optimized
