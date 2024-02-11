@@ -88,7 +88,7 @@ common language
         TypeSynonymInstances
         UndecidableInstances
         ViewPatterns
-        NoFieldSelectors
+        -- NoFieldSelectors
         OverloadedRecordDot
 
   default-language: GHC2021
@@ -132,13 +132,24 @@ common test-dependencies
 library
     import:           language, dependencies
     exposed-modules:  MyLib
+
                       PDataTypes
+                      PUtilities
+
                       DataTypes
+                      Instances
+
+                      InitialiseGameSC
+                      RunGameSC
+                      PlayerIdentifierMP
+                      RefNFTManagerSC
+
     -- other-modules:
     -- other-extensions:
     -- build-depends:    base ^>=4.17.2.1
     hs-source-dirs:   src
                       Common
+                      Scripts
 
     if flag(optimized)
         hs-source-dirs: src-optimized

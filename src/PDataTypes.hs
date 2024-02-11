@@ -3,11 +3,12 @@
 
 module PDataTypes where
 
-import Plutarch.DataRepr (PDataRecord, PLabeledType ((:=)), PlutusTypeData, DerivePConstantViaData (DerivePConstantViaData))
+import Plutarch.DataRepr (PDataRecord, PLabeledType ((:=)), PlutusTypeData, DerivePConstantViaData (DerivePConstantViaData), PDataFields)
 import Plutarch.Prelude (Term, S, Generic, PlutusType, PIsData, PEq, PShow, DerivePlutusType,DPTStrat, PInteger, PlutusTypeNewtype, (#==), pto, PBuiltinList)
 import Plutarch.Api.V2 (PCurrencySymbol, PTokenName, PMap, KeyGuarantees (Unsorted), PPOSIXTime)
 import Plutarch.Lift (PUnsafeLiftDecl (..), PConstantDecl, DerivePConstantViaNewtype (DerivePConstantViaNewtype))
 import DataTypes (Player, Hexagon, Position, Board (..), Move, GameSettings, GameState, GameInfo, Initialization, RunGame)
+import Instances ()
 
 {- PPlayer -}
 data PPlayer (s :: S)   = PRedPlayer    (Term s ( PDataRecord   [ "symbol"  ':= PCurrencySymbol
@@ -84,7 +85,7 @@ data PGameSettings (s :: S) = PSettings (Term s ( PDataRecord   [ "player1"     
                                                                 , "boardS0"         ':= PBoard
                                                                 ] ))
                         deriving stock (Generic)
-                        deriving anyclass (PlutusType, PIsData, PEq, PShow)
+                        deriving anyclass (PlutusType, PDataFields, PIsData, PEq, PShow)
 
 instance DerivePlutusType PGameSettings where type DPTStrat _            = PlutusTypeData
 instance PUnsafeLiftDecl  PGameSettings where type PLifted PGameSettings = GameSettings
