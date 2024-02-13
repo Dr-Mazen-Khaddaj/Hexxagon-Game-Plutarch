@@ -1,4 +1,5 @@
 module Main (main) where
+import Testing.Transactions (startGame)
 
 main :: IO ()
-main = putStrLn "Test suite not yet implemented."
+main = startGame

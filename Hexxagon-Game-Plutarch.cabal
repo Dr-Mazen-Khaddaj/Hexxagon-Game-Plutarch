@@ -112,12 +112,13 @@ common dependencies
                     , plutus-tx
                     , ply-core
                     , ply-plutarch
+                    , containers
                     , serialise
                     , text
+                    , QuickCheck
 
 common test-dependencies
-    build-depends:    containers
-                    , hedgehog
+    build-depends:    hedgehog
                     , hedgehog-quickcheck
                     , plutarch-context-builder
                     , plutarch-quickcheck
@@ -127,7 +128,7 @@ common test-dependencies
                     , tasty-hedgehog
                     , tasty-hunit
                     , tasty-quickcheck
-                    , text
+                    , time
 
 library
     import:           language, dependencies
@@ -143,6 +144,13 @@ library
                       RunGameSC
                       PlayerIdentifierMP
                       RefNFTManagerSC
+
+                      Arbitrary.DataTypes
+                      Arbitrary.Generators
+                      Arbitrary.PlutusDT
+                      Arbitrary
+                      Constants
+                      UtilityFxs
 
     -- other-modules:
     -- other-extensions:
@@ -166,11 +174,19 @@ executable Hexxagon-Game-Plutarch
     hs-source-dirs:   app
 
 test-suite Hexxagon-Game-Plutarch-test
-    import:           language, dependencies, test-dependencies
-    main-is:          Main.hs
-    type:             exitcode-stdio-1.0
-    -- other-modules:
-    -- other-extensions:
-    build-depends:    Hexxagon-Game-Plutarch
+    import:         language, dependencies, test-dependencies
+    main-is:        Main.hs
+    type:           exitcode-stdio-1.0
+    other-modules:  Benchmark.Tools
+                    Benchmark.Types
 
-    hs-source-dirs:   test
+                    Testing.Tools
+                    Testing.TConstants
+                    Testing.Transactions
+
+    -- other-extensions:
+    build-depends:  Hexxagon-Game-Plutarch
+
+    hs-source-dirs: test
+                    test/Testing
+                    test/Benchmark

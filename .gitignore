@@ -22,3 +22,5 @@ dist-newstyle/
 # Imported Modules
 
 Common/
+Benchmark/
+Testing/
