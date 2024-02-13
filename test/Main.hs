@@ -1,5 +1,7 @@
 module Main (main) where
-import Testing.Transactions (startGame)
+import Testing.Transactions (startGame, cancelGame)
 
 main :: IO ()
-main = startGame
+main = do
+    startGame
+    cancelGame
