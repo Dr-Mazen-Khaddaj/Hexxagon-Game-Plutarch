@@ -44,7 +44,7 @@ data PPosition (s :: S) = PPosition (Term s ( PDataRecord   [ "getX" ':= PIntege
                                                             , "getY" ':= PInteger
                                                             ] ))
                         deriving stock (Generic)
-                        deriving anyclass (PlutusType, PIsData, PEq, PShow)
+                        deriving anyclass (PlutusType, PDataFields, PIsData, PEq, PShow)
 
 instance DerivePlutusType PPosition where type DPTStrat _        = PlutusTypeData
 instance PUnsafeLiftDecl  PPosition where type PLifted PPosition = Position
@@ -71,7 +71,7 @@ data PMove (s :: S) = PMove (Term s ( PDataRecord   [ "initialPosition" ':= PPos
                                                     , "finalPosition"   ':= PPosition
                                                     ] ))
                         deriving stock (Generic)
-                        deriving anyclass (PlutusType, PIsData, PEq, PShow)
+                        deriving anyclass (PlutusType, PDataFields, PIsData, PEq, PShow)
 
 instance DerivePlutusType PMove where type DPTStrat _       = PlutusTypeData
 instance PUnsafeLiftDecl  PMove where type PLifted PMove    = Move
@@ -134,7 +134,7 @@ deriving via (DerivePConstantViaData Initialization PInitialization)
     instance (PConstantDecl Initialization)
 
 {- PRunGame -}
-data PRunGame (s :: S)  = PPlayTurn (Term s (PDataRecord '[]))
+data PRunGame (s :: S)  = PPlayTurn (Term s (PDataRecord '["move" ':= PMove]))
                         | PGameOver (Term s (PDataRecord '["player" ':= PPlayer]))
                         | PTimeOut  (Term s (PDataRecord '[]))
                         deriving stock (Generic)
