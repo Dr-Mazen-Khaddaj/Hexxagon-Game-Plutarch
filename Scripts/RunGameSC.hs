@@ -20,6 +20,18 @@ import Plutarch.Builtin (ppairDataBuiltin)
 import Plutarch.Maybe (pfromJust)
 
 ----------------------------------------------------------------------------------------------------------------------------
+{-  Conditions (Play Turn) :
+        1- Only 1 UTxO from RunGameSC as input.
+        2- Continuing Output: Own UTxO is sent to own smart contract.
+        3- same value
+        4- correct Datum:
+            a- same players
+            b- same turn duration
+            c- new game state
+        5- it's not deadline
+    Conditions (GameOver) : undefined
+    Conditions (TimeOut) : undefined
+-}
 ------------------------------------------------------ | Validator | -------------------------------------------------------
 
 typedValidator :: Term s (PGameInfo :--> PRunGame :--> PScriptContext :--> PBool)
@@ -28,14 +40,16 @@ typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
         PPlayTurn ((pfield @"move" #) -> move) -> P.do
             scriptContext <- pletAll scriptContext
             txInfo <- pletFields @'["inputs", "outputs", "validRange"] scriptContext.txInfo
-            let ownTxOutRef = pmatch scriptContext.purpose $ \case  PSpending txOutRef -> pfield @"_0" # txOutRef
-                                                                    _ -> ptraceError "ScriptPurpose is not PSpending! @validator"
-            ownInputUTxO <- pletFields @'["address", "value"] $ getInputUTxO # ownTxOutRef # txInfo.inputs  -- C1
-            let ownAddress = ownInputUTxO.address
+            let ownTxOutRef = pmatch scriptContext.purpose
+                            $ \case PSpending txOutRef  -> pfield @"_0" # txOutRef
+                                    _                   -> ptraceError "ScriptPurpose is not PSpending! @validator"
+            ownAddress <- plet $ getOwnAddress # ownTxOutRef # txInfo.inputs
 
+            let ownCredential = pfield @"credential" #$ ownAddress
+                ownValue = getInputValue # ownCredential # txInfo.inputs                                                -- C1
                 currentTime = pfromData $ pmatch (pfield @"_0" #$ pfield @"from" # txInfo.validRange)
-                            $ \case PFinite a -> pfield @"_0" # a
-                                    _ -> ptraceError "Invalid LowerBound POSIXTime! @validator"
+                            $ \case PFinite a   -> pfield @"_0" # a
+                                    _           -> ptraceError "Invalid LowerBound POSIXTime! @validator"
 
             PGameInfo gameInfo <- pmatch gameInfo
             gameInfo <- pletAll gameInfo
@@ -54,25 +68,20 @@ typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
                                             #$ pdcons @"deadline"       # pdata cNewDeadline
                                             #$ pdcons @"board"          # pdata cBoard
                                             #  pdnil
-                cGameInfo = pcon . PGameInfo $ pdcons @"players"        # gameInfo.players
-                                            #$ pdcons @"turnDuration"   # gameInfo.turnDuration
-                                            #$ pdcons @"gameState"      # pdata cGameState
+                cGameInfo = pcon . PGameInfo $ pdcons @"players"        # gameInfo.players          -- C4.a
+                                            #$ pdcons @"turnDuration"   # gameInfo.turnDuration     -- C4.b
+                                            #$ pdcons @"gameState"      # pdata cGameState          -- C4.c
                                             #  pdnil
                 cDatum = toPOutputDatum cGameInfo
-            let cValue = ownInputUTxO.value
-        -- Proposed variables
-            outputUTxO <- pletFields @'["value", "datum"] $ getOutputUTxO # ownAddress # txInfo.outputs
 
-            pAnd'   [ outputUTxO.value #== cValue -- C2
-                    , outputUTxO.datum #== cDatum -- C3, C4, C5
-                    , currentTime #<= gameState.deadline -- C6
+        -- Proposed variables
+            outputUTxO <- pletFields @'["value", "datum"] $ getOutputUTxO # ownAddress # txInfo.outputs                 -- C2
+
+            pAnd'   [ outputUTxO.value #== ownValue                                                                     -- C3
+                    , outputUTxO.datum #== cDatum                                                                       -- C4
+                    , currentTime #<= gameState.deadline                                                                -- C5
                     ]
 
-        -- //  Conditions: 1 - Take only One UTxO as input from the SC
-        -- //  2- same value 3- same players 4- same turn duration 5- new game state 6- it's not deadline
-        -- // * It is possible to clone a game. But the cloner would need to pay for everything.
-
-            -- undefined
         PGameOver _player -> ptraceError "Undefined"
         PTimeOut _ -> ptraceError "Undefined"
 

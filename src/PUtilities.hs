@@ -7,6 +7,7 @@ module  PUtilities  ( pwrapValidator
                     , pAnd'
                     , toPOutputDatum
                     , elemNFT
+                    , getOwnAddress
                     , getInputValue
                     , getInputUTxO
                     , getOutputUTxO
@@ -48,14 +49,25 @@ elemNFT = phoistAcyclic $ plam $ \ symbol name inputs ->
 
 ---------------------------------------------------
 
-getInputValue :: Term s (PTxOutRef :--> PBuiltinList PTxInInfo :--> PValue 'Sorted 'Positive)
-getInputValue = phoistAcyclic $ plam $ \ txOutRef txIns ->
-    precList    (\self txIn rest -> let txInRef = pfield @"outRef" # txIn
-                                    in  pif (txInRef #== txOutRef)
-                                            (precList   (\self' txIn' rest' ->  let txInRef' = pfield @"outRef" # txIn'
-                                                                                in  pif (txInRef' #== txOutRef)
-                                                                                        (ptraceError "Found more than 1 UTxO! @getInputValue")
-                                                                                        (self' # rest') )
+getOwnAddress :: Term s (PTxOutRef :--> PBuiltinList PTxInInfo :--> PAddress)
+getOwnAddress = phoistAcyclic $ plam $ \ ownRef txIns ->
+    precList    (\self txIn rest -> let txOutRef = pfield @"outRef" # txIn
+                                    in  pif (txOutRef #== ownRef)
+                                            (pfield @"address" #$ pfield @"resolved" # txIn)
+                                            (self # rest)
+                )
+                (\_ -> ptraceError "Can't find own TxOutRef! @getOwnAddress")
+                # txIns
+
+---------------------------------------------------
+
+getInputValue :: Term s (PCredential :--> PBuiltinList PTxInInfo :--> PValue 'Sorted 'Positive)
+getInputValue = phoistAcyclic $ plam $ \ credential txIns ->
+    precList    (\self txIn rest -> let getCredential txInInfo = pfromData $ pfield @"credential" #$ pfield @"address" #$ pfield @"resolved" # txInInfo
+                                    in  pif (getCredential txIn #== credential)
+                                            (precList   (\self' txIn' rest' -> pif  (getCredential txIn' #== credential)
+                                                                                    (ptraceError "Found more than 1 UTxO! @getInputValue")
+                                                                                    (self' # rest') )
                                                         (\_ -> pfield @"value" #$ pfield @"resolved" # txIn)
                                                         # rest )
                                             (self # rest) )
@@ -64,14 +76,13 @@ getInputValue = phoistAcyclic $ plam $ \ txOutRef txIns ->
 
 ---------------------------------------------------
 
-getInputUTxO :: Term s (PTxOutRef :--> PBuiltinList PTxInInfo :--> PTxOut)
-getInputUTxO = phoistAcyclic $ plam $ \ txOutRef txIns ->
-    precList    (\self txIn rest -> let txInRef = pfield @"outRef" # txIn
-                                    in  pif (txInRef #== txOutRef)
-                                            (precList   (\self' txIn' rest' ->  let txInRef' = pfield @"outRef" # txIn'
-                                                                                in  pif (txInRef' #== txOutRef)
-                                                                                        (ptraceError "Found more than 1 UTxO! @getInputUTxO")
-                                                                                        (self' # rest') )
+getInputUTxO :: Term s (PCredential :--> PBuiltinList PTxInInfo :--> PTxOut)
+getInputUTxO = phoistAcyclic $ plam $ \ credential txIns ->
+    precList    (\self txIn rest -> let getCredential txInInfo = pfromData $ pfield @"credential" #$ pfield @"address" #$ pfield @"resolved" # txInInfo
+                                    in  pif (getCredential txIn #== credential)
+                                            (precList   (\self' txIn' rest' -> pif  (getCredential txIn' #== credential)
+                                                                                    (ptraceError "Found more than 1 UTxO! @getInputUTxO")
+                                                                                    (self' # rest') )
                                                         (\_ -> pfield @"resolved" # txIn)
                                                         # rest )
                                             (self # rest) )
