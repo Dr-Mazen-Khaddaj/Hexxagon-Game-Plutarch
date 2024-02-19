@@ -129,6 +129,7 @@ common test-dependencies
                     , tasty-hunit
                     , tasty-quickcheck
                     , time
+                    , either
 
 library
     import:           language, dependencies
@@ -184,9 +185,14 @@ test-suite Hexxagon-Game-Plutarch-test
                     Testing.TConstants
                     Testing.Transactions
 
+                    UnitTesting.Tools
+                    UnitTesting.TConstants
+                    UnitTesting.TestInitialiseGameSC
+
     -- other-extensions:
     build-depends:  Hexxagon-Game-Plutarch
 
     hs-source-dirs: test
                     test/Testing
+                    test/UnitTesting
                     test/Benchmark

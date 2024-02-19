@@ -17,7 +17,7 @@ import  Plutarch.Api.V2             ( PValidator, PScriptHash, PStakingCredentia
                                     )
 import  Plutarch.Api.V2.Contexts    ( PScriptPurpose(PSpending), PScriptContext )
 import  Plutarch.Extra.Field        ( pletAll )
-import  PDataTypes                  ( PInitialization(..) , PGameSettings , PGameState(PGame) , PGameInfo(..) , PPlayer(PBluePlayer) )
+import  PDataTypes
 import  PUtilities
 import  RunGameSC                   qualified
 
@@ -27,9 +27,14 @@ import  RunGameSC                   qualified
         2- New UTxO is created at RunGameSC => That has it's:
         3- Value doubled
         4- correct Datum:
-            a - right players -- ! Need to check that players are of different colors !
+            a - right players
             b - same turn duration
-            c - same board
+            c - right player's turn (PlayerB)
+            d - correct Deadline
+            e - same board
+        5- Legal Redeemer (PlayerB):
+            a - Color Red
+            b - Registering a unique NFT i.e different from PlayerA's NFT.
 
     Conditions (Cancel Game) :
         The registered NFT is found in the input UTxOs.
@@ -55,14 +60,18 @@ typedValidator = phoistAcyclic $ plam $ \ gameSettings initialization scriptCont
                                     _           -> ptraceError "Invalid LowerBound POSIXTime! @validator"
 
         -- Calculated variables
+            PBluePlayer playerA'sNFT <- pmatch $ pfield @"player1" # gameSettings
+            PRedPlayer  playerB'sNFT <- pmatch playerB                                                                  -- C5.a
             let cGameInfo = calculateGameInfo gameSettings playerB currentTime
                 cDatum    = toPOutputDatum cGameInfo
                 cTotalBet = betAmount <> betAmount
+
         -- Proposed variables
             outputUTxO <- pletFields @'["value", "datum"] $ getOutputUTxO # RunGameSC.address # txInfo.outputs          -- C2
 
             pAnd'   [ outputUTxO.value #== cTotalBet                                                                    -- C3
                     , outputUTxO.datum #== cDatum                                                                       -- C4
+                    , pnot #$ playerA'sNFT #== playerB'sNFT                                                             -- C5.b
                     ]
 
     {- Cancel the Game -}
@@ -76,18 +85,18 @@ typedValidator = phoistAcyclic $ plam $ \ gameSettings initialization scriptCont
 calculateGameInfo :: Term s PGameSettings -> Term s PPlayer -> Term s PPOSIXTime -> Term s PGameInfo
 calculateGameInfo settings playerB currentTime = P.do
     settings        <- pletAll settings
-    turnDuration    <- plet settings.turnDuration
+    turnDuration    <- plet settings.turnDuration                                                                       -- C4.b
     let playerA     = settings.player1
-        players     = pcons # playerA #$ pcons # playerB # pnil
-        deadline    = currentTime #+ turnDuration
-        gameState   = pcon . PGame   $ pdcons @"player'sTurn"   # pdata playerB
+        players     = pcons # playerA #$ pcons # playerB # pnil                                                         -- C4.a
+        deadline    = currentTime #+ turnDuration                                                                       -- C4.d
+        gameState   = pcon . PGame   $ pdcons @"player'sTurn"   # pdata playerB                                         -- C4.c
                                     #$ pdcons @"deadline"       # pdata deadline
-                                    #$ pdcons @"board"          # settings.boardS0
+                                    #$ pdcons @"board"          # settings.boardS0                                      -- C4.e
                                     #  pdnil
 
-        gameInfo    = pcon . PGameInfo   $ pdcons @"players"        # pdata players         -- C4.a
-                                        #$ pdcons @"turnDuration"   # pdata turnDuration    -- C4.b
-                                        #$ pdcons @"gameState"      # pdata gameState       -- C4.c
+        gameInfo    = pcon . PGameInfo   $ pdcons @"players"        # pdata players
+                                        #$ pdcons @"turnDuration"   # pdata turnDuration
+                                        #$ pdcons @"gameState"      # pdata gameState
                                         #  pdnil
     gameInfo
 

@@ -1,7 +1,15 @@
 module Main (main) where
-import Testing.Transactions (startGame, cancelGame)
+
+import Test.Tasty (TestTree, testGroup, defaultMain)
+import UnitTesting.TestInitialiseGameSC qualified
 
 main :: IO ()
-main = do
-    startGame
-    cancelGame
+main = defaultMain $ testGroup "All Tests" [unitTests, propertyTests]
+
+-- Unit Testing
+unitTests :: TestTree
+unitTests = testGroup "All Unit Tests" [ UnitTesting.TestInitialiseGameSC.testAllConditions ]
+
+-- Property Testing
+propertyTests :: TestTree
+propertyTests = testGroup "All Property Tests" []

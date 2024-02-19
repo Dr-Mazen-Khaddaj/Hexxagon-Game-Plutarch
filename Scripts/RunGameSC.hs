@@ -2,6 +2,7 @@ module  RunGameSC   ( typedValidator
                     , validator
                     , script
                     , scriptHash
+                    , scriptCredential
                     , address
                     ) where
 
