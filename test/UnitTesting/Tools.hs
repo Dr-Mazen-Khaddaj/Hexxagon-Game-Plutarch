@@ -9,8 +9,6 @@ module  UnitTesting.Tools   ( inputScript
                             , outputScript
                             , TestElement (..)
                             , Arguments
-                            , applyArguments
-                            , applyAllArgs
                             , testElement
                             ) where
 
@@ -39,14 +37,8 @@ instance Show TestElement where
 
 type Arguments = Either [Data] [Data]
 
-testElement :: ClosedTerm PValidator -> (Int -> Int -> Maybe Arguments) -> TestElement -> TestTree
-testElement validator getArguments testElem = tryFromPTerm (show testElem) validator . sequence_ $ applyAllArgs arguments
-    where
-        arguments = getArguments testElem.number <$> [1..]
-
-applyAllArgs :: [Maybe Arguments] -> [TestCompiled ()]
-applyAllArgs ((Just args) : restOfArgs) = applyArguments args : applyAllArgs restOfArgs
-applyAllArgs _ = []
+testElement :: ClosedTerm PValidator -> (TestElement,[Arguments]) -> TestTree
+testElement validator (testElem, args) = tryFromPTerm (show testElem) validator . sequence_ $ applyArguments <$> args
 
 applyArguments :: Arguments -> TestCompiled ()
 applyArguments (Right arguments) = testEvalCase "Pass " Success arguments

@@ -1,4 +1,8 @@
-module  UnitTesting.TestInitialiseGameSC (testAllConditions, scriptContext) where
+module  UnitTesting.TestInitialiseGameSC    ( testAllConditions
+                                            , scriptContext
+                                            , getArguments
+                                            , allTestCases
+                                            ) where
 
 import  Test.Tasty                  (TestTree, testGroup)
 import  Plutarch.Prelude            (plift)
@@ -16,17 +20,31 @@ import  RunGameSC                   qualified
 
 testAllConditions :: TestTree
 testAllConditions = testGroup "Unit Testing : InitialiseGameSC.validator" $
-    testElement InitialiseGameSC.validator getArguments <$>
-        [ Condition 1 "Only 1 UTxO consumed from InitialiseGameSC."
-        , Condition 2 "New UTxO is created at RunGameSC"
-        , Condition 3 "Value doubled"
-        , Condition 4 "Correct Datum : right players"
-        , Condition 5 "Correct Datum : same turn duration"
-        , Condition 6 "Correct Datum : right player's turn"
-        , Condition 7 "Correct Datum : correct Deadline"
-        , Condition 8 "Correct Datum : same board"
-        , Condition 9 "Cancel Game : The registered NFT is found in the input UTxOs."
-        ]
+    testElement InitialiseGameSC.validator <$> allTestCases
+
+-- Conditions
+allConditions :: [TestElement]
+allConditions = [ Condition 1 "Only 1 UTxO consumed from InitialiseGameSC."
+                , Condition 2 "New UTxO is created at RunGameSC"
+                , Condition 3 "Value doubled"
+                , Condition 4 "Correct Datum : right players"
+                , Condition 5 "Correct Datum : same turn duration"
+                , Condition 6 "Correct Datum : right player's turn"
+                , Condition 7 "Correct Datum : correct Deadline"
+                , Condition 8 "Correct Datum : same board"
+                , Condition 9 "Cancel Game : The registered NFT is found in the input UTxOs."
+                ]
+
+-- Test Cases
+allTestCases :: [(TestElement,[Arguments])]
+allTestCases = getTestCase <$> allConditions
+
+getTestCase :: TestElement -> (TestElement,[Arguments])
+getTestCase testElem = (testElem,) arguments
+    where
+        arguments = recFromJust $ getArguments testElem.number <$> [1..]
+        recFromJust ((Just x):xs) = x : recFromJust xs
+        recFromJust _ = []
 
 -- Arguments: Datum, Redeemer, Script Context
 
