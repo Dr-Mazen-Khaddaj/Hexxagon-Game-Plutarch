@@ -1,6 +1,4 @@
 module  UnitTesting.TestInitialiseGameSC    ( testAllConditions
-                                            , scriptContext
-                                            , getArguments
                                             , allTestCases
                                             ) where
 
@@ -19,23 +17,36 @@ import  RunGameSC                   qualified
 ------------------------------------------------------ | Unit Tests | ------------------------------------------------------
 
 testAllConditions :: TestTree
-testAllConditions = testGroup "Unit Testing : InitialiseGameSC.validator" $
-    testElement InitialiseGameSC.validator <$> allTestCases
+testAllConditions = testGroup "Unit Testing : InitialiseGameSC Validator"
+    [ testGroup "Initialization : Start Game"  (testElement InitialiseGameSC.validator . getTestCase <$> conditions_StartGame)
+    , testGroup "Initialization : Cancel Game" (testElement InitialiseGameSC.validator . getTestCase <$> conditions_CancelGame)
+    ]
 
--- Conditions
+------------------------------------------------------ Conditions
+
 allConditions :: [TestElement]
-allConditions = [ Condition 1 "Only 1 UTxO consumed from InitialiseGameSC."
-                , Condition 2 "New UTxO is created at RunGameSC"
-                , Condition 3 "Value doubled"
-                , Condition 4 "Correct Datum : right players"
-                , Condition 5 "Correct Datum : same turn duration"
-                , Condition 6 "Correct Datum : right player's turn"
-                , Condition 7 "Correct Datum : correct Deadline"
-                , Condition 8 "Correct Datum : same board"
-                , Condition 9 "Cancel Game : The registered NFT is found in the input UTxOs."
-                ]
+allConditions = concat  [ conditions_StartGame
+                        , conditions_CancelGame
+                        ]
 
--- Test Cases
+conditions_StartGame, conditions_CancelGame :: [TestElement]
+conditions_StartGame =  [ Condition 1  " 1 - Only 1 UTxO consumed from InitialiseGameSC."
+                        , Condition 2  " 2 - New UTxO is created at RunGameSC"
+                        , Condition 3  " 3 - Value doubled"
+                        , Condition 4  " 4a - Correct Datum : right players"
+                        , Condition 5  " 4b - Correct Datum : same turn duration"
+                        , Condition 6  " 4c - Correct Datum : right player's turn"
+                        , Condition 7  " 4d - Correct Datum : correct Deadline"
+                        , Condition 8  " 4e - Correct Datum : same board"
+                        , Condition 9  " 5a - Legal Redeemer : Color Red"
+                        , Condition 10 " 5b - Legal Redeemer : Registering a unique NFT."
+                        ]
+
+conditions_CancelGame = [ Condition 11 "Cancel Game : The registered NFT is found in the input UTxOs."
+                        ]
+
+------------------------------------------------------ Test Cases
+
 allTestCases :: [(TestElement,[Arguments])]
 allTestCases = getTestCase <$> allConditions
 
@@ -46,31 +57,34 @@ getTestCase testElem = (testElem,) arguments
         recFromJust ((Just x):xs) = x : recFromJust xs
         recFromJust _ = []
 
--- Arguments: Datum, Redeemer, Script Context
+------------------------------------------------------ Arguments: Datum, Redeemer, Script Context
 
 getArguments :: Int -> Int -> Maybe Arguments
-getArguments 1 1 = Just $ Right [toData normalSettings , toData (Add playerB) , toData $ scriptContext 01] -- 1 Succeed
-getArguments 1 2 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 02] -- 2 Fail
-getArguments 2 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 03] -- 1 Fail
-getArguments 2 2 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 04] -- 1 Fail
-getArguments 3 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 05] -- 1 Fail
-getArguments 3 2 = Just $ Right [toData normalSettings , toData (Add playerB) , toData $ scriptContext 06] -- 1 Succeed
-getArguments 3 3 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 07] -- 1 Fail
-getArguments 3 4 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 08] -- 1 Fail
-getArguments 3 5 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 09] -- 1 Fail
-getArguments 4 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 10] -- 1 Fail
-getArguments 4 2 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 11] -- 1 Fail
-getArguments 4 3 = Just $ Left  [toData normalSettings , toData (Add playerA) , toData $ scriptContext 12] -- 1 Fail
-getArguments 4 4 = Just $ Left  [toData normalSettings , toData (Add playerC) , toData $ scriptContext 13] -- 1 Fail
-getArguments 4 5 = Just $ Left  [toData normalSettings , toData (Add playerD) , toData $ scriptContext 14] -- 1 Fail
-getArguments 5 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 15] -- 1 Fail
-getArguments 5 2 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 16] -- 1 Fail
-getArguments 6 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 17] -- 1 Fail
-getArguments 7 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 18] -- 1 Fail
-getArguments 8 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 19] -- 1 Fail
-getArguments 9 1 = Just $ Right [toData normalSettings , toData Withdraw      , toData $ scriptContext 20] -- 1 Succeed
-getArguments 9 2 = Just $ Left  [toData normalSettings , toData Withdraw      , toData $ scriptContext 21] -- 1 Fail
-getArguments 9 3 = Just $ Left  [toData normalSettings , toData Withdraw      , toData $ scriptContext 22] -- 1 Fail
+getArguments 01 1 = Just $ Right [toData normalSettings , toData (Add playerB) , toData $ scriptContext 01]
+getArguments 01 2 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 02]
+getArguments 02 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 03]
+getArguments 02 2 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 04]
+getArguments 03 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 05]
+getArguments 03 2 = Just $ Right [toData normalSettings , toData (Add playerB) , toData $ scriptContext 06]
+getArguments 03 3 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 07]
+getArguments 03 4 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 08]
+getArguments 03 5 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 09]
+getArguments 04 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 10]
+getArguments 04 2 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 11]
+getArguments 04 3 = Just $ Left  [toData normalSettings , toData (Add playerA) , toData $ scriptContext 12]
+getArguments 04 4 = Just $ Left  [toData normalSettings , toData (Add playerC) , toData $ scriptContext 13]
+getArguments 04 5 = Just $ Left  [toData normalSettings , toData (Add playerD) , toData $ scriptContext 14]
+getArguments 05 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 15]
+getArguments 05 2 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 16]
+getArguments 06 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 17]
+getArguments 07 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 18]
+getArguments 08 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 19]
+getArguments 09 1 = Just $ Left  [toData normalSettings , toData (Add playerA) , toData $ scriptContext 12]
+getArguments 09 2 = Just $ Left  [toData normalSettings , toData (Add playerD) , toData $ scriptContext 14]
+getArguments 10 1 = Just $ Left  [toData normalSettings , toData (Add playerC) , toData $ scriptContext 13]
+getArguments 11 1 = Just $ Right [toData normalSettings , toData Withdraw      , toData $ scriptContext 20]
+getArguments 11 2 = Just $ Left  [toData normalSettings , toData Withdraw      , toData $ scriptContext 21]
+getArguments 11 3 = Just $ Left  [toData normalSettings , toData Withdraw      , toData $ scriptContext 22]
 getArguments _ _ = Nothing
 
 --------------------------------------------------- | Sample Variables | ---------------------------------------------------
@@ -138,7 +152,7 @@ scriptContext 3 = buildSpending checkPhase1 $ mconcat
             where
                 validRange = Interval (LowerBound (Finite currentTime2024Jan1) True) (UpperBound (PosInf) False)
 
--- Player B trying to send the UTxO to a compromised RunGameSC address that his his own staking credential (Staking-Key-Control Attack)
+-- Player B trying to send the UTxO to a compromised RunGameSC address that has his own staking credential (Staking-Key-Control Attack)
 scriptContext 4 = buildSpending checkPhase1 $ mconcat
             [ inputScript   scriptH (Add playerB)       100     []      0
             , inputPubKey   bobPaymentAddress           102     []      1
@@ -263,7 +277,7 @@ scriptContext 11 = buildSpending checkPhase1 $ mconcat
             ]
             where
                 gameStateS0 = Game playerB (currentTime2024Jan1 + turnDuration7h) classicBoard_S9DC3
-                normalGameInfo = GameInfo [playerB,playerA] turnDuration7h gameStateS0 -- missing player A
+                normalGameInfo = GameInfo [playerB,playerA] turnDuration7h gameStateS0 -- different order
                 validRange = Interval (LowerBound (Finite currentTime2024Jan1) True) (UpperBound (PosInf) False)
 
 -- Output datum has same player twice (Datum : wrong Players)

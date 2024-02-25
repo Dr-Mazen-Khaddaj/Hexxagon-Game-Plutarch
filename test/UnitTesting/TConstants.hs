@@ -19,6 +19,7 @@ module  UnitTesting.TConstants  ( alicePubKeyCredential
                                 , playerB
                                 , playerC
                                 , playerD
+                                , turnDuration1ms
                                 , turnDuration1h
                                 , turnDuration7h
                                 , currentTime2024Jan1
@@ -77,9 +78,10 @@ playerD = BluePlayer (CurrencySymbol "currency-symbol-identifier-B") (TokenName 
 
 --------------------------------------------------- POSIXTime
 
-turnDuration7h, turnDuration1h :: POSIXTime
+turnDuration7h, turnDuration1h, turnDuration1ms :: POSIXTime
 turnDuration7h = POSIXTime 25200000
 turnDuration1h = POSIXTime 3600000
+turnDuration1ms = POSIXTime 1
 
 currentTime2024Jan1 :: POSIXTime
 currentTime2024Jan1 = POSIXTime 1704067200000

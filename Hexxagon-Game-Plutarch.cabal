@@ -134,6 +134,7 @@ common test-dependencies
 library
     import:           language, dependencies
     exposed-modules:  MyLib
+                      Conversions
 
                       PDataTypes
                       PUtilities
@@ -188,6 +189,7 @@ test-suite Hexxagon-Game-Plutarch-test
                     UnitTesting.Tools
                     UnitTesting.TConstants
                     UnitTesting.TestInitialiseGameSC
+                    UnitTesting.TestRunGameSC
 
     -- other-extensions:
     build-depends:  Hexxagon-Game-Plutarch

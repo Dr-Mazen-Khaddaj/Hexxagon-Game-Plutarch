@@ -22,14 +22,15 @@ import Plutarch.Maybe (pfromJust)
 
 ----------------------------------------------------------------------------------------------------------------------------
 {-  Conditions (Play Turn) :
-        1- Only 1 UTxO from RunGameSC as input.
+        1- Only 1 UTxO consumed from RunGameSC.
         2- Continuing Output: Own UTxO is sent to own smart contract.
-        3- same value
+        3- Value Preserved
         4- correct Datum:
             a- same players
             b- same turn duration
             c- new game state
         5- it's not deadline
+        6- Player's registered NFT is found in the input UTxOs.
     Conditions (GameOver) : undefined
     Conditions (TimeOut) : undefined
 -}
@@ -60,6 +61,9 @@ typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
             let player = gameState.player'sTurn
                 board = gameState.board
 
+            registeredNFT <- pletAll $ pmatch gameState.player'sTurn (\case PBluePlayer nft -> nft
+                                                                            PRedPlayer  nft -> nft )
+
         -- Calculated variables
             let iHex = pmatch player (\case PRedPlayer _ -> pconstant Red ; PBluePlayer _ -> pconstant Blue)
             let cBoard = makeMove # iHex # move # board
@@ -81,6 +85,7 @@ typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
             pAnd'   [ outputUTxO.value #== ownValue                                                                     -- C3
                     , outputUTxO.datum #== cDatum                                                                       -- C4
                     , currentTime #<= gameState.deadline                                                                -- C5
+                    , elemNFT # registeredNFT.symbol # registeredNFT.name # txInfo.inputs                               -- C6
                     ]
 
         PGameOver _player -> ptraceError "Undefined"
@@ -95,18 +100,6 @@ makeMove = phoistAcyclic $ plam $ \ iHex move board -> P.do
     iPos <- plet move.initialPosition
     fPos <- plet move.finalPosition
     nearbyPositions <- plet $ calculateNearbyPositions # pfromData fPos # 1
-
-    let flipNearbyPositions boardList = precList
-            (\onBoard block rest -> P.do
-                let pos = pfstBuiltin # block
-                let hex = pfromData $ psndBuiltin # block
-                pif (pelem # pos # nearbyPositions)
-                    (pcons  # (ppairDataBuiltin # pos # (pdata $ flipHex # hex # iHex))
-                            #$ onBoard # rest )
-                    (pcons  # block #$ onBoard # rest)
-            )
-            (\_-> pnil)
-            # boardList
 
     let flipInitialPosition boardList = precList
             (\onBoard block rest -> P.do
@@ -124,6 +117,18 @@ makeMove = phoistAcyclic $ plam $ \ iHex move board -> P.do
             (\_-> ptraceError "Can't find initial position! @makeMove")
             # boardList
 
+    let flipNearbyPositions boardList = precList
+            (\onBoard block rest -> P.do
+                let pos = pfstBuiltin # block
+                let hex = pfromData $ psndBuiltin # block
+                pif (pelem # pos # nearbyPositions)
+                    (pcons  # (ppairDataBuiltin # pos # (pdata $ flipHex # hex # iHex))
+                            #$ onBoard # rest )
+                    (pcons  # block #$ onBoard # rest)
+            )
+            (\_-> pnil)
+            # boardList
+
     let flipFinalPosition boardList = precList
             (\onBoard block rest -> P.do
                 let pos = pfstBuiltin # block
@@ -136,7 +141,7 @@ makeMove = phoistAcyclic $ plam $ \ iHex move board -> P.do
             (\_-> ptraceError "Final position is either not Empty or not available! @makeMove")
             # boardList
 
-    pcon . PBoard . pcon . PMap . flipFinalPosition . flipInitialPosition . flipNearbyPositions $ pto . pto $ board
+    pcon . PBoard . pcon . PMap . flipFinalPosition . flipNearbyPositions . flipInitialPosition $ pto . pto $ board
 
 distance :: Term s (PMove :--> PInteger)
 distance = phoistAcyclic $ plam $ \ move -> P.do

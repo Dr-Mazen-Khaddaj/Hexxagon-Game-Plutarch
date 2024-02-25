@@ -30,8 +30,8 @@ data TestElement    = Condition     {number :: Int, title :: String}
 
 instance Show TestElement where
     show :: TestElement -> String
-    show (Condition     n title) = "Test Condition "     <> show n <> " : " <> title
-    show (Vulnerability n title) = "Test Vulnerability " <> show n <> " : " <> title
+    show (Condition     _ title) = "Test Condition : "      <> title
+    show (Vulnerability _ title) = "Test Vulnerability : "  <> title
 
 --------------------------------------------------- Arguments to TestTree - Helper functions
 
