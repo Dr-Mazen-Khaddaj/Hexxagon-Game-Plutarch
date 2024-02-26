@@ -31,7 +31,12 @@ import Plutarch.Maybe (pfromJust)
             c- new game state
         5- it's not deadline
         6- Player's registered NFT is found in the input UTxOs.
-    Conditions (GameOver) : undefined
+    Conditions (GameOver) :
+        1- True Game Over
+        2- Redeeming player is registered as a player in the game.
+        3- Redeeming player is the Winner.
+        4- Player's registered NFT is found in the input UTxOs.
+    Conditions (Draw) : undefined
     Conditions (TimeOut) : undefined
 -}
 ------------------------------------------------------ | Validator | -------------------------------------------------------
@@ -39,6 +44,7 @@ import Plutarch.Maybe (pfromJust)
 typedValidator :: Term s (PGameInfo :--> PRunGame :--> PScriptContext :--> PBool)
 typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
     pmatch runGame $ \case
+    {- Play Turn -}
         PPlayTurn ((pfield @"move" #) -> move) -> P.do
             scriptContext <- pletAll scriptContext
             txInfo <- pletFields @'["inputs", "outputs", "validRange"] scriptContext.txInfo
@@ -53,19 +59,18 @@ typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
                             $ \case PFinite a   -> pfield @"_0" # a
                                     _           -> ptraceError "Invalid LowerBound POSIXTime! @validator"
 
-            PGameInfo gameInfo <- pmatch gameInfo
-            gameInfo <- pletAll gameInfo
-            PGame gameState <- pmatch gameInfo.gameState
-            gameState <- pletAll gameState
+            PGameInfo gameInfo  <- pmatch gameInfo
+            gameInfo            <- pletAll gameInfo
+            PGame gameState     <- pmatch gameInfo.gameState
+            gameState           <- pletAll gameState
+            player              <- plet gameState.player'sTurn
 
-            let player = gameState.player'sTurn
-                board = gameState.board
+            let board = gameState.board
+                iHex = pmatch player (\case PRedPlayer _ -> pconstant Red ; PBluePlayer _ -> pconstant Blue)
 
-            registeredNFT <- pletAll $ pmatch gameState.player'sTurn (\case PBluePlayer nft -> nft
-                                                                            PRedPlayer  nft -> nft )
+            registeredNFT <- pletAll $ pmatch player (\case PBluePlayer nft -> nft ; PRedPlayer  nft -> nft )
 
         -- Calculated variables
-            let iHex = pmatch player (\case PRedPlayer _ -> pconstant Red ; PBluePlayer _ -> pconstant Blue)
             let cBoard = makeMove # iHex # move # board
                 cNextPlayer = pfromJust #$ pfind # (plam $ (pnot #) . (#== player)) # gameInfo.players
                 cNewDeadline = gameState.deadline #+ gameInfo.turnDuration
@@ -88,7 +93,40 @@ typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
                     , elemNFT # registeredNFT.symbol # registeredNFT.name # txInfo.inputs                               -- C6
                     ]
 
-        PGameOver _player -> ptraceError "Undefined"
+    {- Game Over -}
+        PGameOver pWinner -> P.do
+            PGameInfo gameInfo  <- pmatch gameInfo
+            gameInfo            <- pletFields @'["players","gameState"] gameInfo
+            PGame gameState     <- pmatch gameInfo.gameState
+            PBoard boardMap     <- pmatch $ pfield @"board" # gameState
+            PMap boardList      <- pmatch boardMap
+
+            pWinner             <- plet $ pfield @"player" # pWinner
+            registeredNFT       <- pletAll $ pmatch pWinner (\case PBluePlayer nft -> nft ; PRedPlayer  nft -> nft)
+
+            iHex <- plet $ pdata $ pmatch pWinner (\case PRedPlayer _ -> pconstant Red ; PBluePlayer _ -> pconstant Blue)
+            oHex <- plet $ pdata $ pmatch pWinner (\case PRedPlayer _ -> pconstant Blue ; PBluePlayer _ -> pconstant Red)
+            emptyHex <- plet $ pdata $ pconstant Empty
+
+            nearbyEmptyPositions <- plet $ pfoldr # (addNearbyPositions # emptyHex) # pnil # boardList
+            let score = pfoldr  # ( plam $ \ block n -> P.do
+                                        hex <- plet $ psndBuiltin # block
+                                        let pos = pfstBuiltin # block
+                                        pif (hex #== iHex)
+                                            (pif    (pelem # pos # nearbyEmptyPositions)                                -- C1
+                                                    (ptraceError "Game is not over yet!")
+                                                    (n #+ 1) )
+                                            (pif (hex #== oHex) (n #- 1) n) )
+                                # (0 :: Term s PInteger)
+                                # boardList
+
+            let inputs = pfield @"inputs" #$ pfield @"txInfo" # scriptContext
+
+            pAnd'   [ pelem # pWinner # gameInfo.players                                                                -- C2
+                    , 0 #< score                                                                                        -- C3
+                    , elemNFT # registeredNFT.symbol # registeredNFT.name # inputs                                      -- C4
+                    ]
+
         PTimeOut _ -> ptraceError "Undefined"
 
 --------------------------------------------------- | Helper Functions | ---------------------------------------------------
@@ -187,6 +225,26 @@ calculateNearbyPositions = phoistAcyclic $ plam $ \ position distance -> P.do
                 s4 = (-n,) <$> [0,-1..(-n+1)]
                 s5 = [ (i,i-n) | i <- [1..n-1]]
                 s6 = [ (i-n,i) | i <- [1..n-1]]
+
+addNearbyPositions :: Term s ( PAsData PHexagon
+                            :--> PBuiltinPair (PAsData PPosition) (PAsData PHexagon)
+                            :--> PBuiltinList (PAsData PPosition)
+                            :--> PBuiltinList (PAsData PPosition) )
+addNearbyPositions = phoistAcyclic $ plam $ \ iHex block iPositions -> P.do
+    pos <- plet $ pfromData $ pfstBuiltin # block
+    pif (psndBuiltin # block #== iHex)
+        (pfoldr #   ( plam $ \nearbyPos positions ->
+                        pif (pelem # nearbyPos # positions)
+                            (positions)
+                            (pcons # nearbyPos # positions) )
+                #   ( pfoldr    #   ( plam $ \nearbyPos positions ->
+                                        pif (pelem # nearbyPos # positions)
+                                            (positions)
+                                            (pcons # nearbyPos # positions) )
+                                # iPositions
+                                #$ calculateNearbyPositions # pos # 1 )
+                #$ calculateNearbyPositions # pos # 2 )
+        (iPositions)
 
 ---------------------------------------------------- | Serializations | ----------------------------------------------------
 
