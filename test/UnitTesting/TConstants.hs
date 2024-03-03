@@ -18,7 +18,8 @@ module  UnitTesting.TConstants  ( alicePubKeyCredential
                                 , playerA
                                 , playerB
                                 , playerC
-                                , playerD
+                                , playerX
+                                , playerY
                                 , turnDuration1ms
                                 , turnDuration1h
                                 , turnDuration7h
@@ -69,12 +70,13 @@ identifierNFT_B = makeAssetClass "currency-symbol-identifier-B" "identifierNFT-B
 identifierNFT_C = makeAssetClass "currency-symbol-identifier-C" "identifierNFT-C"
 
 --------------------------------------------------- Players
-playerA, playerB, playerC, playerD :: Player
+playerA, playerB, playerC, playerX, playerY :: Player
 
 playerA = BluePlayer (CurrencySymbol "currency-symbol-identifier-A") (TokenName "identifierNFT-A")
 playerB = RedPlayer  (CurrencySymbol "currency-symbol-identifier-B") (TokenName "identifierNFT-B")
-playerC = RedPlayer  (CurrencySymbol "currency-symbol-identifier-A") (TokenName "identifierNFT-A")
-playerD = BluePlayer (CurrencySymbol "currency-symbol-identifier-B") (TokenName "identifierNFT-B")
+playerC = RedPlayer  (CurrencySymbol "currency-symbol-identifier-C") (TokenName "identifierNFT-C")
+playerX = RedPlayer  (CurrencySymbol "currency-symbol-identifier-A") (TokenName "identifierNFT-A")
+playerY = BluePlayer (CurrencySymbol "currency-symbol-identifier-B") (TokenName "identifierNFT-B")
 
 --------------------------------------------------- POSIXTime
 

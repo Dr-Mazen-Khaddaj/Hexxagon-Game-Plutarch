@@ -32,12 +32,14 @@ import Plutarch.Maybe (pfromJust)
         5- it's not deadline
         6- Player's registered NFT is found in the input UTxOs.
     Conditions (GameOver) :
-        1- True Game Over
+        1- Game is Over
         2- Redeeming player is registered as a player in the game.
         3- Redeeming player is the Winner.
         4- Player's registered NFT is found in the input UTxOs.
     Conditions (Draw) : undefined
-    Conditions (TimeOut) : undefined
+    Conditions (TimeOut) :
+        1- It is TimeOut
+        2- Opponent claiming the win.
 -}
 ------------------------------------------------------ | Validator | -------------------------------------------------------
 
@@ -68,7 +70,7 @@ typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
             let board = gameState.board
                 iHex = pmatch player (\case PRedPlayer _ -> pconstant Red ; PBluePlayer _ -> pconstant Blue)
 
-            registeredNFT <- pletAll $ pmatch player (\case PBluePlayer nft -> nft ; PRedPlayer  nft -> nft )
+            registeredNFT <- pletAll $ pmatch player (\case PBluePlayer nft -> nft ; PRedPlayer nft -> nft)
 
         -- Calculated variables
             let cBoard = makeMove # iHex # move # board
@@ -94,18 +96,21 @@ typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
                     ]
 
     {- Game Over -}
-        PGameOver pWinner -> P.do
+        PGameOver redeemingPlayer -> P.do
             PGameInfo gameInfo  <- pmatch gameInfo
             gameInfo            <- pletFields @'["players","gameState"] gameInfo
             PGame gameState     <- pmatch gameInfo.gameState
-            PBoard boardMap     <- pmatch $ pfield @"board" # gameState
+            gameState           <- pletFields @'["player'sTurn","board"] gameState
+            PBoard boardMap     <- pmatch gameState.board
             PMap boardList      <- pmatch boardMap
+            players             <- plet gameInfo.players
+            player              <- plet gameState.player'sTurn
+            PJust opponent      <- pmatch $ pfind # (plam $ (pnot #) . (#== player)) # players
+            redeemingPlayer     <- plet $ pfield @"player" # redeemingPlayer
+            registeredNFT       <- pletAll $ pmatch redeemingPlayer (\case PBluePlayer nft -> nft ; PRedPlayer nft -> nft)
 
-            pWinner             <- plet $ pfield @"player" # pWinner
-            registeredNFT       <- pletAll $ pmatch pWinner (\case PBluePlayer nft -> nft ; PRedPlayer  nft -> nft)
-
-            iHex <- plet $ pdata $ pmatch pWinner (\case PRedPlayer _ -> pconstant Red ; PBluePlayer _ -> pconstant Blue)
-            oHex <- plet $ pdata $ pmatch pWinner (\case PRedPlayer _ -> pconstant Blue ; PBluePlayer _ -> pconstant Red)
+            iHex <- plet $ pdata $ pmatch player (\case PRedPlayer _ -> pconstant Red ; PBluePlayer _ -> pconstant Blue)
+            oHex <- plet $ pdata $ pmatch player (\case PRedPlayer _ -> pconstant Blue ; PBluePlayer _ -> pconstant Red)
             emptyHex <- plet $ pdata $ pconstant Empty
 
             nearbyEmptyPositions <- plet $ pfoldr # (addNearbyPositions # emptyHex) # pnil # boardList
@@ -120,14 +125,28 @@ typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
                                 # (0 :: Term s PInteger)
                                 # boardList
 
-            let inputs = pfield @"inputs" #$ pfield @"txInfo" # scriptContext
+                winner = pif (0 #< score) player opponent
+                inputs = pfield @"inputs" #$ pfield @"txInfo" # scriptContext
 
-            pAnd'   [ pelem # pWinner # gameInfo.players                                                                -- C2
-                    , 0 #< score                                                                                        -- C3
+            pAnd'   [ pelem # redeemingPlayer # players                                                                 -- C2
+                    , redeemingPlayer #== winner                                                                        -- C3
                     , elemNFT # registeredNFT.symbol # registeredNFT.name # inputs                                      -- C4
                     ]
 
-        PTimeOut _ -> ptraceError "Undefined"
+        PTimeOut _ -> P.do
+            txInfo <- pletFields @'["inputs","validRange"] $ pfield @"txInfo" # scriptContext
+            PGameInfo gameInfo  <- pmatch gameInfo
+            gameInfo            <- pletFields @'["players","gameState"] gameInfo
+            PGame gameState     <- pmatch gameInfo.gameState
+            gameState           <- pletFields @'["player'sTurn","deadline"] gameState
+            PJust opponent      <- pmatch $ pfind # (plam $ (pnot #) . (#== gameState.player'sTurn)) # gameInfo.players
+            registeredNFT <- pletAll $ pmatch opponent (\case PBluePlayer nft -> nft ; PRedPlayer nft -> nft)
+            let currentTime = pfromData $ pmatch (pfield @"_0" #$ pfield @"from" # txInfo.validRange)
+                            $ \case PFinite a   -> pfield @"_0" # a
+                                    _           -> ptraceError "Invalid LowerBound POSIXTime! @validator"
+            pAnd'   [ pnot #$ currentTime #<= gameState.deadline                                                        -- C1
+                    , elemNFT # registeredNFT.symbol # registeredNFT.name # txInfo.inputs                               -- C2
+                    ]
 
 --------------------------------------------------- | Helper Functions | ---------------------------------------------------
 

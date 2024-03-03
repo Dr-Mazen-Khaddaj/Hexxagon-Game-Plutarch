@@ -11,7 +11,8 @@ import Plutarch.Context
 import UnitTesting.TConstants
 import Constants
 import qualified RunGameSC
-import UtilityFxs (makeMove, unsafeMakeMove)
+import UtilityFxs (makeMove, unsafeMakeMove, botPlayGame, makeStartingBoard)
+import PlutusLedgerApi.V1.Value (AssetClass)
 
 ------------------------------------------------------ | Unit Tests | ------------------------------------------------------
 
@@ -41,8 +42,15 @@ conditions_PlayTurn =   [ Condition 1  " 1 - Only 1 UTxO consumed from RunGameSC
                         , Condition 10 " 6 - Player's registered NFT is found in the input UTxOs."
                         ]
 
-conditions_GameOver = []
-conditions_TimeOut  = []
+conditions_GameOver =   [ Condition 11 " 1 - Game is Over"
+                        , Condition 12 " 2 - Redeeming player is registered as a player in the game."
+                        , Condition 13 " 3 - Redeeming player is the Winner."
+                        , Condition 14 " 4 - Player's registered NFT is found in the input UTxOs."
+                        ]
+
+conditions_TimeOut  =   [ Condition 31 " 1 - It is TimeOut"
+                        , Condition 32 " 2 - Opponent claiming the win."
+                        ]
 
 ------------------------------------------------------ Test Cases
 
@@ -59,30 +67,50 @@ getTestCase testElem = (testElem,) arguments
 ------------------------------------------------------ Arguments: Datum, Redeemer, Script Context
 
 getArguments :: Int -> Int -> Maybe Arguments
-getArguments 01 1 = Just $ Right [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 01]
-getArguments 01 2 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 02]
-getArguments 02 1 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 03]
-getArguments 02 2 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 04]
-getArguments 03 1 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 05]
-getArguments 04 1 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 06]
-getArguments 04 2 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 07]
-getArguments 04 3 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 08]
-getArguments 05 1 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 09]
-getArguments 05 2 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 10]
-getArguments 06 1 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 11]
-getArguments 07 1 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 12]
-getArguments 08 1 = Just $ Right [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 13]
-getArguments 08 2 = Just $ Right [toData normalGameInfo , toData (PlayTurn legalMove2)   , toData $ scriptContext 14]
-getArguments 08 3 = Just $ Left  [toData normalGameInfo , toData (PlayTurn illegalMove1) , toData $ scriptContext 15]
-getArguments 08 4 = Just $ Left  [toData normalGameInfo , toData (PlayTurn illegalMove2) , toData $ scriptContext 16]
-getArguments 08 5 = Just $ Left  [toData normalGameInfo , toData (PlayTurn illegalMove3) , toData $ scriptContext 17]
-getArguments 08 6 = Just $ Left  [toData normalGameInfo , toData (PlayTurn illegalMove4) , toData $ scriptContext 18]
-getArguments 09 1 = Just $ Right [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 19]
-getArguments 09 2 = Just $ Right [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 20]
-getArguments 09 3 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 21]
-getArguments 10 1 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 22]
-getArguments 10 2 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 23]
-getArguments 10 3 = Just $ Left  [toData normalGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 24]
+getArguments 01 1 = Just $ Right [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 01]
+getArguments 01 2 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 02]
+getArguments 02 1 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 03]
+getArguments 02 2 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 04]
+getArguments 03 1 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 05]
+getArguments 04 1 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 06]
+getArguments 04 2 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 07]
+getArguments 04 3 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 08]
+getArguments 05 1 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 09]
+getArguments 05 2 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 10]
+getArguments 06 1 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 11]
+getArguments 07 1 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 12]
+getArguments 08 1 = Just $ Right [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 13]
+getArguments 08 2 = Just $ Right [toData initialGameInfo , toData (PlayTurn legalMove2)   , toData $ scriptContext 14]
+getArguments 08 3 = Just $ Left  [toData initialGameInfo , toData (PlayTurn illegalMove1) , toData $ scriptContext 15]
+getArguments 08 4 = Just $ Left  [toData initialGameInfo , toData (PlayTurn illegalMove2) , toData $ scriptContext 16]
+getArguments 08 5 = Just $ Left  [toData initialGameInfo , toData (PlayTurn illegalMove3) , toData $ scriptContext 17]
+getArguments 08 6 = Just $ Left  [toData initialGameInfo , toData (PlayTurn illegalMove4) , toData $ scriptContext 18]
+getArguments 09 1 = Just $ Right [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 19]
+getArguments 09 2 = Just $ Right [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 20]
+getArguments 09 3 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 21]
+getArguments 10 1 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 22]
+getArguments 10 2 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 23]
+getArguments 10 3 = Just $ Left  [toData initialGameInfo , toData (PlayTurn legalMove1)   , toData $ scriptContext 24]
+
+getArguments 11 1 = Just $ Right [toData finalGameInfo   , toData (GameOver playerA) , toData $ scriptContext 102]
+getArguments 11 2 = Just $ Right [toData finalGameInfo2  , toData (GameOver playerB) , toData $ scriptContext 101]
+getArguments 11 3 = Just $ Right [toData finalGameInfo3  , toData (GameOver playerB) , toData $ scriptContext 101]
+getArguments 11 4 = Just $ Left  [toData initialGameInfo , toData (GameOver playerA) , toData $ scriptContext 102]
+getArguments 11 5 = Just $ Left  [toData initialGameInfo , toData (GameOver playerB) , toData $ scriptContext 101]
+getArguments 12 1 = Just $ Left  [toData finalGameInfo   , toData (GameOver playerC) , toData $ scriptContext 103]
+getArguments 12 2 = Just $ Left  [toData finalGameInfo   , toData (GameOver playerC) , toData $ scriptContext 104]
+getArguments 13 1 = Just $ Left  [toData finalGameInfo   , toData (GameOver playerB) , toData $ scriptContext 101]
+getArguments 13 2 = Just $ Left  [toData finalGameInfo2  , toData (GameOver playerA) , toData $ scriptContext 102]
+getArguments 13 3 = Just $ Left  [toData finalGameInfo3  , toData (GameOver playerA) , toData $ scriptContext 102]
+getArguments 14 1 = Just $ Left  [toData finalGameInfo   , toData (GameOver playerA) , toData $ scriptContext 105]
+
+getArguments 31 1 = Just $ Left  [toData initialGameInfo , toData TimeOut , toData $ scriptContext 301]
+getArguments 31 2 = Just $ Left  [toData initialGameInfo , toData TimeOut , toData $ scriptContext 302]
+getArguments 31 3 = Just $ Right [toData initialGameInfo , toData TimeOut , toData $ scriptContext 303]
+getArguments 32 1 = Just $ Left  [toData initialGameInfo , toData TimeOut , toData $ scriptContext 304]
+getArguments 32 2 = Just $ Right [toData initialGameInfo , toData TimeOut , toData $ scriptContext 305]
+getArguments 32 3 = Just $ Left  [toData initialGameInfo , toData TimeOut , toData $ scriptContext 306]
+
 getArguments _ _ = Nothing
 
 --------------------------------------------------- | Sample Variables | ---------------------------------------------------
@@ -117,11 +145,19 @@ scriptContextConstantPart = [ inputScript   scriptH normalPlayTurn 200 [] 0
                             , timeRange validRange
                             ]
 
-
 -- Datum : PlayerB's turn after he initiated the game (1st move)
 
-normalGameInfo :: GameInfo
-normalGameInfo = GameInfo [playerA,playerB] turnDuration7h (Game playerB (currentTime2024Jan1+turnDuration7h) classicBoard_S9DC3)
+initialGameInfo, initialGameInfo_A :: GameInfo
+initialGameInfo     = GameInfo [playerA,playerB] turnDuration7h (Game playerB (currentTime2024Jan1+turnDuration7h) classicBoard_S9DC3)
+initialGameInfo_A   = GameInfo [playerA,playerB] turnDuration7h (Game playerA (currentTime2024Jan1+turnDuration7h) classicBoard_S9DC3)
+
+initialGameInfo_Size :: Integer -> GameInfo
+initialGameInfo_Size s = GameInfo [playerA,playerB] turnDuration7h (Game playerA (currentTime2024Jan1+turnDuration7h) $ makeStartingBoard s [])
+
+finalGameInfo, finalGameInfo2, finalGameInfo3 :: GameInfo
+finalGameInfo  = botPlayGame initialGameInfo
+finalGameInfo2 = botPlayGame initialGameInfo_A
+finalGameInfo3 = botPlayGame $ initialGameInfo_Size 15
 
 -- Redeemer : Legal move
 
@@ -214,7 +250,7 @@ scriptContext 8 = buildSpending checkPhase1 $ mconcat $
             , outputValue   bobPaymentAddress           2       [identifierNFT_B]
             ] <> scriptContextConstantPart
             where
-                compromisedGameInfo = GameInfo [playerA,playerD] turnDuration7h gameStateS1
+                compromisedGameInfo = GameInfo [playerA,playerY] turnDuration7h gameStateS1
 
 -- Output datum has different turnDuration (Datum : wrong turnDuration)
 scriptContext 9 = buildSpending checkPhase1 $ mconcat $
@@ -256,31 +292,31 @@ scriptContext 12 = buildSpending checkPhase1 $ mconcat $
                 compromisedGameInfo = GameInfo [playerA,playerB] turnDuration7h compromisedGameStateS1
 
 -- Legal Move : Distance = 1 (Datum : correct Board)
-scriptContext 13 = mkScriptContext_Move legalMove1
+scriptContext 13 = mkPlayTurnScriptContext_Move legalMove1
 
 -- Legal Move : Distance = 2 (Datum : correct Board)
-scriptContext 14 = mkScriptContext_Move legalMove2
+scriptContext 14 = mkPlayTurnScriptContext_Move legalMove2
 
 -- Illegal Move : Distance = 3 (Datum : wrong Board)
-scriptContext 15 = mkScriptContext_Move illegalMove1
+scriptContext 15 = mkPlayTurnScriptContext_Move illegalMove1
 
 -- Illegal Move : Initial Position does not exist (Datum : wrong Board)
-scriptContext 16 = mkScriptContext_Move illegalMove2
+scriptContext 16 = mkPlayTurnScriptContext_Move illegalMove2
 
 -- Illegal Move : Initial hexagon is Empty (Datum : wrong Board)
-scriptContext 17 = mkScriptContext_Move illegalMove3
+scriptContext 17 = mkPlayTurnScriptContext_Move illegalMove3
 
 -- Illegal Move : Initial hexagon is Blue (Datum : wrong Board)
-scriptContext 18 = mkScriptContext_Move illegalMove4
+scriptContext 18 = mkPlayTurnScriptContext_Move illegalMove4
 
 -- Before Deadline (Succeed)
-scriptContext 19 = mkScriptContext_Time currentTime2024Jan1
+scriptContext 19 = mkPlayTurnScriptContext_Time currentTime2024Jan1
 
 -- At Deadline (Succeed)
-scriptContext 20 = mkScriptContext_Time $ currentTime2024Jan1 + turnDuration7h
+scriptContext 20 = mkPlayTurnScriptContext_Time $ currentTime2024Jan1 + turnDuration7h
 
 -- After Deadline by 1 millisecond (Should Fail : After Deadline)
-scriptContext 21 = mkScriptContext_Time $ currentTime2024Jan1 + turnDuration7h + turnDuration1ms
+scriptContext 21 = mkPlayTurnScriptContext_Time $ currentTime2024Jan1 + turnDuration7h + turnDuration1ms
 
 -- Missing registered NFT (Unauthorized access)
 scriptContext 22 = buildSpending checkPhase1 $ mconcat $
@@ -302,12 +338,90 @@ scriptContext 24 = buildSpending checkPhase1 $ mconcat $
             , outputNFT     bobPaymentAddress identifierNFT_A
             ] <> scriptContextConstantPart
 
+-- Player B (Bob) ending the game by consuming the UTxO at RunGameSC
+-- Success or failure (depending on Game Info in the datum - If he is the winner or not)
+scriptContext 101 = buildSpending checkPhase1 $ mconcat
+            [ inputScript   scriptH (GameOver playerB)  200     []                  0
+            , inputPubKey   bobPaymentAddress           2       [identifierNFT_B]   1
+            , outputValue   bobPaymentAddress           200     [identifierNFT_B]
+            , signedWith $ samplePubKeyHash "Bob"
+            , txId $ makeTxId "Unique Random Text!"
+            , fee (singleton adaSymbol adaToken 2)
+            , withSpendingOutRefIdx 0
+            ]
+
+-- Player A (Alice) ending the game by consuming the UTxO at RunGameSC
+-- Success or failure (depending on Game Info in the datum - If she is the winner or not)
+scriptContext 102 = buildSpending checkPhase1 $ mconcat
+            [ inputScript   scriptH (GameOver playerA)  200     []                  0
+            , inputPubKey   alicePaymentAddress         2       [identifierNFT_A]   1
+            , outputValue   alicePaymentAddress         200     [identifierNFT_A]
+            , signedWith $ samplePubKeyHash "Alice"
+            , txId $ makeTxId "Unique Random Text!"
+            , fee (singleton adaSymbol adaToken 2)
+            , withSpendingOutRefIdx 0
+            ]
+
+-- Player C trying to end the game by consuming the UTxO at RunGameSC (unregistered player)
+-- While holding a registered NFT.
+scriptContext 103 = buildSpending checkPhase1 $ mconcat
+            [ inputScript   scriptH (GameOver playerC)  200     []                  0
+            , inputPubKey   alicePaymentAddress         2       [identifierNFT_A]   1
+            , outputValue   alicePaymentAddress         200     [identifierNFT_A]
+            , signedWith $ samplePubKeyHash "Alice"
+            , txId $ makeTxId "Unique Random Text!"
+            , fee (singleton adaSymbol adaToken 2)
+            , withSpendingOutRefIdx 0
+            ]
+
+-- Player C trying to end the game by consuming the UTxO at RunGameSC (unregistered player)
+-- While holding a unregistered NFT.
+scriptContext 104 = buildSpending checkPhase1 $ mconcat
+            [ inputScript   scriptH (GameOver playerC)  200     []                  0
+            , inputPubKey   alicePaymentAddress         2       [identifierNFT_C]   1
+            , outputValue   alicePaymentAddress         200     [identifierNFT_C]
+            , signedWith $ samplePubKeyHash "Alice"
+            , txId $ makeTxId "Unique Random Text!"
+            , fee (singleton adaSymbol adaToken 2)
+            , withSpendingOutRefIdx 0
+            ]
+
+-- Player A (Alice) ending the game by consuming the UTxO at RunGameSC
+-- Missing registered NFT (Unauthorized access)
+scriptContext 105 = buildSpending checkPhase1 $ mconcat
+            [ inputScript   scriptH (GameOver playerA)  200     []                  0
+            , inputPubKey   alicePaymentAddress         2       []   1
+            , outputValue   alicePaymentAddress         200     []
+            , signedWith $ samplePubKeyHash "Alice"
+            , txId $ makeTxId "Unique Random Text!"
+            , fee (singleton adaSymbol adaToken 2)
+            , withSpendingOutRefIdx 0
+            ]
+
+-- Player A (Alice) ending the game before deadline has reached (Should Fail : Deadline not passed yet)
+scriptContext 301 = mkTimeOutScriptContext [identifierNFT_A] $ currentTime2024Jan1 + turnDuration7h - turnDuration1ms
+
+-- Player A (Alice) ending the game at deadline has reached (Should Fail : Deadline not passed yet)
+scriptContext 302 = mkTimeOutScriptContext [identifierNFT_A] $ currentTime2024Jan1 + turnDuration7h
+
+-- Player A (Alice) ending the game after deadline has reached (Succeed)
+scriptContext 303 = mkTimeOutScriptContext [identifierNFT_A] $ currentTime2024Jan1 + turnDuration7h + turnDuration1ms
+
+-- Missing registered NFT (Unauthorized access)
+scriptContext 304 = mkTimeOutScriptContext [] $ currentTime2024Jan1 + turnDuration7h + turnDuration1ms
+
+-- Opponent player's NFT (Authorized access)
+scriptContext 305 = mkTimeOutScriptContext [identifierNFT_A] $ currentTime2024Jan1 + turnDuration7h + turnDuration1ms
+
+-- Current player's NFT (Unauthorized access)
+scriptContext 306 = mkTimeOutScriptContext [identifierNFT_B] $ currentTime2024Jan1 + turnDuration7h + turnDuration1ms
+
 scriptContext _ = error "Undefined Script Context!"
 
 ----------------------------------------------- | Script Context Functions | -----------------------------------------------
 
-mkScriptContext_Move :: Move -> ScriptContext
-mkScriptContext_Move move = buildSpending checkPhase1 $ mconcat $
+mkPlayTurnScriptContext_Move :: Move -> ScriptContext
+mkPlayTurnScriptContext_Move move = buildSpending checkPhase1 $ mconcat $
             [ inputPubKey   bobPaymentAddress           4       [identifierNFT_B]   1
             , outputScript  (plift RunGameSC.address)   200     []  customGameInfo
             , outputValue   bobPaymentAddress           2       [identifierNFT_B]
@@ -315,8 +429,8 @@ mkScriptContext_Move move = buildSpending checkPhase1 $ mconcat $
             where
                 customGameInfo = makeGameInfoFromMove move
 
-mkScriptContext_Time :: POSIXTime -> ScriptContext
-mkScriptContext_Time lowerBound = buildSpending checkPhase1 $ mconcat $
+mkPlayTurnScriptContext_Time :: POSIXTime -> ScriptContext
+mkPlayTurnScriptContext_Time lowerBound = buildSpending checkPhase1 $ mconcat $
             [ inputPubKey   bobPaymentAddress           4       [identifierNFT_B]   1
             , outputScript  (plift RunGameSC.address)   200     []  newGameInfo
             , outputValue   bobPaymentAddress           2       [identifierNFT_B]
@@ -324,3 +438,14 @@ mkScriptContext_Time lowerBound = buildSpending checkPhase1 $ mconcat $
             where
                 customValidRange = Interval (LowerBound (Finite lowerBound) True) (UpperBound (PosInf) False)
 
+mkTimeOutScriptContext :: [AssetClass] -> POSIXTime -> ScriptContext
+mkTimeOutScriptContext nfts lowerBound = buildSpending checkPhase1 $ mconcat
+            [ inputScript   scriptH TimeOut     200     []      0
+            , inputPubKey   alicePaymentAddress 2       nfts    1
+            , outputValue   alicePaymentAddress 200     nfts
+            , signedWith $ samplePubKeyHash "Alice"
+            , txId $ makeTxId "Unique Random Text!"
+            , fee (singleton adaSymbol adaToken 2)
+            , withSpendingOutRefIdx 0
+            , timeRange $ Interval (LowerBound (Finite lowerBound) True) (UpperBound (PosInf) False)
+            ]

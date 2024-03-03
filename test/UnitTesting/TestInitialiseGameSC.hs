@@ -72,16 +72,16 @@ getArguments 03 5 = Just $ Left  [toData normalSettings , toData (Add playerB) ,
 getArguments 04 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 10]
 getArguments 04 2 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 11]
 getArguments 04 3 = Just $ Left  [toData normalSettings , toData (Add playerA) , toData $ scriptContext 12]
-getArguments 04 4 = Just $ Left  [toData normalSettings , toData (Add playerC) , toData $ scriptContext 13]
-getArguments 04 5 = Just $ Left  [toData normalSettings , toData (Add playerD) , toData $ scriptContext 14]
+getArguments 04 4 = Just $ Left  [toData normalSettings , toData (Add playerX) , toData $ scriptContext 13]
+getArguments 04 5 = Just $ Left  [toData normalSettings , toData (Add playerY) , toData $ scriptContext 14]
 getArguments 05 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 15]
 getArguments 05 2 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 16]
 getArguments 06 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 17]
 getArguments 07 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 18]
 getArguments 08 1 = Just $ Left  [toData normalSettings , toData (Add playerB) , toData $ scriptContext 19]
 getArguments 09 1 = Just $ Left  [toData normalSettings , toData (Add playerA) , toData $ scriptContext 12]
-getArguments 09 2 = Just $ Left  [toData normalSettings , toData (Add playerD) , toData $ scriptContext 14]
-getArguments 10 1 = Just $ Left  [toData normalSettings , toData (Add playerC) , toData $ scriptContext 13]
+getArguments 09 2 = Just $ Left  [toData normalSettings , toData (Add playerY) , toData $ scriptContext 14]
+getArguments 10 1 = Just $ Left  [toData normalSettings , toData (Add playerX) , toData $ scriptContext 13]
 getArguments 11 1 = Just $ Right [toData normalSettings , toData Withdraw      , toData $ scriptContext 20]
 getArguments 11 2 = Just $ Left  [toData normalSettings , toData Withdraw      , toData $ scriptContext 21]
 getArguments 11 3 = Just $ Left  [toData normalSettings , toData Withdraw      , toData $ scriptContext 22]
@@ -298,7 +298,7 @@ scriptContext 12 = buildSpending checkPhase1 $ mconcat
 
 -- Second player holds same NFT (Datum : wrong Players)
 scriptContext 13 = buildSpending checkPhase1 $ mconcat
-            [ inputScript   scriptH (Add playerC)       100     []      0           -- PlayerC has same NFT as player A
+            [ inputScript   scriptH (Add playerX)       100     []      0           -- PlayerC has same NFT as player A
             , inputPubKey   bobPaymentAddress           102     []      1
             , outputScript  (plift RunGameSC.address)   200     []  normalGameInfo
             , signedWith $ samplePubKeyHash "Bob"
@@ -308,13 +308,13 @@ scriptContext 13 = buildSpending checkPhase1 $ mconcat
             , timeRange validRange
             ]
             where
-                gameStateS0 = Game playerC (currentTime2024Jan1 + turnDuration7h) classicBoard_S9DC3
-                normalGameInfo = GameInfo [playerA,playerC] turnDuration7h gameStateS0
+                gameStateS0 = Game playerX (currentTime2024Jan1 + turnDuration7h) classicBoard_S9DC3
+                normalGameInfo = GameInfo [playerA,playerX] turnDuration7h gameStateS0
                 validRange = Interval (LowerBound (Finite currentTime2024Jan1) True) (UpperBound (PosInf) False)
 
 -- Second player has same color as player A (Datum : wrong Players)
 scriptContext 14 = buildSpending checkPhase1 $ mconcat
-            [ inputScript   scriptH (Add playerD)       100     []      0           -- playerD has color Blue, and different NFT
+            [ inputScript   scriptH (Add playerY)       100     []      0           -- playerD has color Blue, and different NFT
             , inputPubKey   bobPaymentAddress           102     []      1
             , outputScript  (plift RunGameSC.address)   200     []  normalGameInfo
             , signedWith $ samplePubKeyHash "Bob"
@@ -324,8 +324,8 @@ scriptContext 14 = buildSpending checkPhase1 $ mconcat
             , timeRange validRange
             ]
             where
-                gameStateS0 = Game playerD (currentTime2024Jan1 + turnDuration7h) classicBoard_S9DC3
-                normalGameInfo = GameInfo [playerA,playerD] turnDuration7h gameStateS0
+                gameStateS0 = Game playerY (currentTime2024Jan1 + turnDuration7h) classicBoard_S9DC3
+                normalGameInfo = GameInfo [playerA,playerY] turnDuration7h gameStateS0
                 validRange = Interval (LowerBound (Finite currentTime2024Jan1) True) (UpperBound (PosInf) False)
 
 -- Output datum has different turnDuration (Datum : wrong turnDuration)
