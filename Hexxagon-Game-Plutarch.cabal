@@ -133,8 +133,7 @@ common test-dependencies
 
 library
     import:           language, dependencies
-    exposed-modules:  MyLib
-                      Conversions
+    exposed-modules:  Conversions
 
                       PDataTypes
                       PUtilities
@@ -158,7 +157,8 @@ library
     -- other-extensions:
     -- build-depends:    base ^>=4.17.2.1
     hs-source-dirs:   src
-                      Common
+                      Hexxagon-Game-Atlas/test
+                      Hexxagon-Game-Atlas/src
                       Scripts
 
     if flag(optimized)

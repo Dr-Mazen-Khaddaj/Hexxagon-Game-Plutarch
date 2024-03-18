@@ -133,6 +133,8 @@ typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
                     , elemNFT # registeredNFT.symbol # registeredNFT.name # inputs                                      -- C4
                     ]
 
+        PDraw _ -> ptraceError "Undefined"
+
         PTimeOut _ -> P.do
             txInfo <- pletFields @'["inputs","validRange"] $ pfield @"txInfo" # scriptContext
             PGameInfo gameInfo  <- pmatch gameInfo
@@ -271,7 +273,7 @@ validator :: Term s PValidator
 validator = pwrapValidator # typedValidator
 
 script :: Script
-script = validatorToScript validator
+script = closedTermToScript validator
 
 scriptHash :: Term s PScriptHash
 scriptHash = hashScript script

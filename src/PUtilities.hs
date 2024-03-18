@@ -1,9 +1,10 @@
 module  PUtilities  ( pwrapValidator
                     , pwrapPolicy
-                    , validatorToScript
+                    , closedTermToScript
                     , hashScript
                     , mkScriptCredential
                     , mkAddress
+                    , writeScriptToFile
                     , pAnd'
                     , toPOutputDatum
                     , elemNFT
@@ -20,7 +21,15 @@ import  Plutarch.Bool               ( pand' )
 import  Plutarch.Api.V1             ( PCredential (..) )
 import  Plutarch.Api.V1.AssocMap    ( plookup )
 import  Plutarch.Api.V2
-import  Plutarch.Unsafe             ( punsafeCoerce )
+import  Plutarch.Unsafe             ( punsafeCoerce   )
+import  Plutarch.Script             ( serialiseScript )
+import  Data.Aeson                  ( object, (.=) )
+import  Data.Aeson.Encode.Pretty    ( encodePretty )
+import  Data.Text                   ( Text )
+import  Data.Text.Encoding          qualified as Text
+import  Data.ByteString.Lazy        qualified as LBS
+import  Data.ByteString.Base16      qualified as B16
+import  Data.ByteString.Short       qualified as SBS
 
 --------------------------------------------------- | Helper Functions | ---------------------------------------------------
 
@@ -120,8 +129,8 @@ pwrapPolicy = phoistAcyclic $
                 (popaque $ pconstant ())
                 (ptraceError "Minting script evaluation: False")
 
-validatorToScript :: (forall (s :: S). Term s PValidator) -> Script
-validatorToScript validator = case compile (Config DoTracing) validator of
+closedTermToScript :: (forall (s :: S). Term s a) -> Script
+closedTermToScript a = case compile (Config DoTracing) a of
     Left (show -> e) -> error e
     Right script -> script
 
@@ -135,3 +144,23 @@ mkAddress :: Term s PCredential -> Term s (PMaybeData PStakingCredential) -> Ter
 mkAddress scriptCredential stakingCredential = pcon . PAddress   $ pdcons # pdata scriptCredential
                                                                 #$ pdcons # pdata stakingCredential
                                                                 #  pdnil
+
+scriptToCBOR :: Script -> Text
+scriptToCBOR = Text.decodeUtf8 . B16.encode . SBS.fromShort . serialiseScript
+
+------------------------------------------------- | Write Script to File | -------------------------------------------------
+
+writeScriptToFile :: Script -> String -> IO ()
+writeScriptToFile script name = do
+    LBS.writeFile filepath content
+    putStrLn $ "Wrote \ESC[94m" <> name <> "\ESC[0m to " <> filepath
+    putStrLn $ "ScriptHash \ESC[93m" <> show (plift $ hashScript script) <> "\ESC[0m"
+    where
+        filepath = "Hexxagon-Game-Atlas/Scripts/" <> name <> ".json"
+        content  = encodePretty $ object pairs
+        pairs    =  [ "type"        .= ("PlutusScriptV2" :: String)
+                    , "description" .= name
+                    , "cborHex"     .= scriptToCBOR script
+                    ]
+
+----------------------------------------------------------------------------------------------------------------------------

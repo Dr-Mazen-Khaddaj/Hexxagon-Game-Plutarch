@@ -106,7 +106,7 @@ validator :: Term s PValidator
 validator = pwrapValidator # typedValidator
 
 script :: Script
-script = validatorToScript validator
+script = closedTermToScript validator
 
 scriptHash :: Term s PScriptHash
 scriptHash = hashScript script

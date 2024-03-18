@@ -4,10 +4,10 @@
 module PDataTypes where
 
 import Plutarch.DataRepr (PDataRecord, PLabeledType ((:=)), PlutusTypeData, DerivePConstantViaData (DerivePConstantViaData), PDataFields)
-import Plutarch.Prelude (Term, S, Generic, PlutusType, PIsData, PEq, PShow, DerivePlutusType,DPTStrat, PInteger, PlutusTypeNewtype, (#==), pto, PBuiltinList)
+import Plutarch.Prelude (Term, S, Generic, PlutusType, PIsData, PEq, PShow, DerivePlutusType,DPTStrat, PInteger, PlutusTypeNewtype, (#==), pto, PBuiltinList, PData, PByteString)
 import Plutarch.Api.V2 (PCurrencySymbol, PTokenName, PMap, KeyGuarantees (Unsorted), PPOSIXTime)
 import Plutarch.Lift (PUnsafeLiftDecl (..), PConstantDecl, DerivePConstantViaNewtype (DerivePConstantViaNewtype))
-import DataTypes (Player, Hexagon, Position, Board (..), Move, GameSettings, GameState, GameInfo, Initialization, RunGame)
+import DataTypes (Player, Hexagon, Position, Board (..), Move, GameSettings, GameState, GameInfo, Initialization, RunGame, Metadata)
 import Instances ()
 
 {- PPlayer -}
@@ -136,6 +136,7 @@ deriving via (DerivePConstantViaData Initialization PInitialization)
 {- PRunGame -}
 data PRunGame (s :: S)  = PPlayTurn (Term s (PDataRecord '["move" ':= PMove]))
                         | PGameOver (Term s (PDataRecord '["player" ':= PPlayer]))
+                        | PDraw     (Term s (PDataRecord '[]))
                         | PTimeOut  (Term s (PDataRecord '[]))
                         deriving stock (Generic)
                         deriving anyclass (PlutusType, PIsData, PEq, PShow)
@@ -145,5 +146,18 @@ instance PUnsafeLiftDecl  PRunGame where type PLifted PRunGame  = RunGame
 
 deriving via (DerivePConstantViaData RunGame PRunGame)
     instance (PConstantDecl RunGame)
+
+data PMetadata (s :: S) = PMetadata (Term s (PDataRecord    [ "metadata"     ':= PMap 'Unsorted PByteString PByteString
+                                                            , "versionNum"   ':= PInteger
+                                                            , "extraData"    ':= PData
+                                                            ] ))
+                        deriving stock (Generic)
+                        deriving anyclass (PlutusType, PIsData, PEq, PShow)
+
+instance DerivePlutusType PMetadata where type DPTStrat _        = PlutusTypeData
+instance PUnsafeLiftDecl  PMetadata where type PLifted PMetadata = Metadata
+
+deriving via (DerivePConstantViaData Metadata PMetadata)
+    instance (PConstantDecl Metadata)
 
 ----------------------------------------------------------------------------------------------------------------------------
