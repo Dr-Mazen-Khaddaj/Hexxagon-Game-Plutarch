@@ -7,11 +7,15 @@ module  PUtilities  ( pwrapValidator
                     , writeScriptToFile
                     , pAnd'
                     , toPOutputDatum
+                    , toPBuiltinPair
                     , elemNFT
                     , getOwnAddress
                     , getInputValue
                     , getInputUTxO
+                    , getInputUTxORef
                     , getOutputUTxO
+                    , q0ADA
+                    , q2ADA
                     ) where
 
 import  Plutarch.Prelude
@@ -20,6 +24,8 @@ import  Plutarch.Monadic            qualified as P
 import  Plutarch.Bool               ( pand' )
 import  Plutarch.Api.V1             ( PCredential (..) )
 import  Plutarch.Api.V1.AssocMap    ( plookup )
+import  Plutarch.Api.V1.Tuple       ( pbuiltinPairFromTuple, ptuple )
+import  Plutarch.Api.V1.Value       ( padaSymbol, padaToken )
 import  Plutarch.Api.V2
 import  Plutarch.Unsafe             ( punsafeCoerce   )
 import  Plutarch.Script             ( serialiseScript )
@@ -43,6 +49,11 @@ toPOutputDatum d = pcon . POutputDatum $ pdcons @"outputDatum" # (pdata . pcon .
 
 ---------------------------------------------------
 
+toPBuiltinPair :: forall {a :: PType} {b :: PType} {s :: S}. (PIsData a, PIsData b) => Term s a -> Term s b -> Term s (PBuiltinPair (PAsData a) (PAsData b))
+toPBuiltinPair a b = pfromData $ pbuiltinPairFromTuple $ pdata $ ptuple # pdata a # pdata b
+
+---------------------------------------------------
+
 elemNFT :: Term s (PCurrencySymbol :--> PTokenName :--> PBuiltinList PTxInInfo :--> PBool)
 elemNFT = phoistAcyclic $ plam $ \ symbol name inputs ->
     precList
@@ -55,6 +66,12 @@ elemNFT = phoistAcyclic $ plam $ \ symbol name inputs ->
                         PNothing -> onInputs # restOfInputs ))
         (\_ -> pcon PFalse)
         # inputs
+
+---------------------------------------------------
+
+q0ADA, q2ADA :: forall {s :: S} {keysort :: KeyGuarantees}. Term s (PBuiltinPair (PAsData PCurrencySymbol) (PAsData (PMap keysort PTokenName PInteger)))
+q0ADA = toPBuiltinPair padaSymbol (pcon . PMap $ pcons # toPBuiltinPair padaToken 0         # pnil)
+q2ADA = toPBuiltinPair padaSymbol (pcon . PMap $ pcons # toPBuiltinPair padaToken 2_000_000 # pnil)
 
 ---------------------------------------------------
 
@@ -100,12 +117,30 @@ getInputUTxO = phoistAcyclic $ plam $ \ credential txIns ->
 
 ---------------------------------------------------
 
+getInputUTxORef :: Term s (PCredential :--> PBuiltinList PTxInInfo :--> PTxOutRef)
+getInputUTxORef = phoistAcyclic $ plam $ \ credential txIns ->
+    precList    (\self txIn rest -> let getCredential txInInfo = pfromData $ pfield @"credential" #$ pfield @"address" #$ pfield @"resolved" # txInInfo
+                                    in  pif (getCredential txIn #== credential)
+                                            (precList   (\self' txIn' rest' -> pif  (getCredential txIn' #== credential)
+                                                                                    (ptraceError "Found more than 1 UTxO! @getInputUTxORef")
+                                                                                    (self' # rest') )
+                                                        (\_ -> pfield @"outRef" # txIn)
+                                                        # rest )
+                                            (self # rest) )
+                (\_ -> ptraceError "Can't find UTxO! @getInputUTxORef")
+                # txIns
+
+---------------------------------------------------
+
 getOutputUTxO :: Term s (PAddress :--> PBuiltinList PTxOut :--> PTxOut)
 getOutputUTxO = phoistAcyclic $ plam $ \ addr txOuts ->
-    precList    (\self txOut rest ->    let txOutAddr = pfield @"address" # txOut
-                                        in  pif (txOutAddr #== addr)
-                                                (txOut)
-                                                (self # rest) )
+    precList    (\self txOut rest -> pif    (pfield @"address" # txOut #== addr)
+                                            (precList   (\self' txOut' rest' -> pif (pfield @"address" # txOut' #== addr)
+                                                                                    (ptraceError "Found more than 1 UTxO! @getOutputUTxO")
+                                                                                    (self' # rest') )
+                                                        (\_ -> txOut)
+                                                        # rest )
+                                            (self # rest) )
                 (\_ -> ptraceError "Can't find UTxO @getOutputUTxO")
                 # txOuts
 

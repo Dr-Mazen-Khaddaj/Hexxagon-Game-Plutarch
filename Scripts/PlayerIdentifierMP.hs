@@ -5,16 +5,14 @@ module  PlayerIdentifierMP  ( typedMintingPolicy
 
 import  Plutarch
 import  Plutarch.Prelude
-import  Plutarch.Api.V1.Value   (padaToken, padaSymbol)
-import  Plutarch.Api.V1.Tuple   (pbuiltinPairFromTuple, ptuple)
 import  Plutarch.Api.V2         hiding (scriptHash)
 import  Plutarch.Extra.Field    (pletAll)
-import  PlutusLedgerApi.V2      (BuiltinData(..), Data (..))
 import  UtilityFxs              (bytesFromHex)
 import  DataTypes               (Metadata(..))
 import  PUtilities
 import  PDataTypes              ()
 import  Plutarch.Monadic        qualified as P
+import  PlutusCore.Data         (Data(..))
 import  PlutusTx.AssocMap       qualified as AssocMap
 import  RefNFTManagerSC         qualified
 
@@ -23,7 +21,7 @@ import  RefNFTManagerSC         qualified
         1 - Unique TxOutRef is found in the inputs.
         2 - Minted Tokens are valid according to cip-68 (symbol & name).
         3 - Minted refNFT is sent to RefNFTManagerSC.
-        4 - Datum of TxOut at RefNFTManagerSC (Single output that holds the refNFT) is correct.
+        4 - Datum of TxOut at RefNFTManagerSC (That holds the refNFT) is correct.
 -}
 ----------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------- | Minting Policy | ----------------------------------------------------
@@ -48,23 +46,20 @@ typedMintingPolicy = phoistAcyclic $ plam $ \ uniqueRef _ scriptContext -> P.do
     let userNFT_Name    = pcon $ PTokenName $ pconstant $ userNFTLabel <> "HEXXAGON"
     refNFT_Name <- plet $ pcon $ PTokenName $ pconstant $ refNFTLabel  <> "HEXXAGON"
 
-    let refNFT = toPBuiltinPair ownCurrencySymbol (pcon . PMap $ pcons # toPBuiltinPair refNFT_Name 1 # pnil)
-        q2ADA  = toPBuiltinPair padaSymbol        (pcon . PMap $ pcons # toPBuiltinPair padaToken 2_000_000 # pnil)
-        q0ADA  = toPBuiltinPair padaSymbol        (pcon . PMap $ pcons # toPBuiltinPair padaToken 0         # pnil)
-
     let tokens = pcon . PMap $ pcons # toPBuiltinPair refNFT_Name  1
                             #$ pcons # toPBuiltinPair userNFT_Name 1 # pnil
         cMintedValue = pcon . PValue $ pcon . PMap  $  pcons # q0ADA
                                                     #$ pcons # toPBuiltinPair ownCurrencySymbol tokens # pnil
 
-    let cRefNFTWith2ADA = pcon . PValue $ pcon . PMap $ pcons # q2ADA #$ pcons # refNFT # pnil
+    let refNFT = toPBuiltinPair ownCurrencySymbol (pcon . PMap $ pcons # toPBuiltinPair refNFT_Name 1 # pnil)
+        cRefNFTWith2ADA = pcon . PValue $ pcon . PMap $ pcons # q2ADA #$ pcons # refNFT # pnil
 
-    let cMetadata = Metadata hexxagonMetadata 2 (BuiltinData $ List [])
-        hexxagonMetadata = AssocMap.fromList    [ ("name"           , "Hexxagon Game"                                           )
-                                                , ("image"          , "ipfs://QmcNdgGVQ5Yw9ckWH2PohYKyvmud2MaksyzHz1SBAoM89h"   )
-                                                , ("description"    , "Hexxagon game on the Cardano Blockchain"                 )
-                                                , ("authors"        , "Dr. Mazen Khaddaj & Andrew Garrett Wright"               )
-                                                , ("score"          , "0"                                                       )
+    let cMetadata = Metadata hexxagonMetadata 2 (List [])
+        hexxagonMetadata = AssocMap.fromList    [ ("name"           , B "Hexxagon Game"                                          )
+                                                , ("image"          , B "ipfs://QmcNdgGVQ5Yw9ckWH2PohYKyvmud2MaksyzHz1SBAoM89h"  )
+                                                , ("description"    , B "Hexxagon game on the Cardano Blockchain"                )
+                                                , ("authors"        , B "Dr. Mazen Khaddaj & Andrew Garrett Wright"              )
+                                                , ("score"          , I 0                                                        )
                                                 ]
         cRefNFTOutputDatum = toPOutputDatum $ pconstant cMetadata
 
@@ -76,9 +71,6 @@ typedMintingPolicy = phoistAcyclic $ plam $ \ uniqueRef _ scriptContext -> P.do
             , refNFTOutputUTxO.value #== cRefNFTWith2ADA        -- C3
             , refNFTOutputUTxO.datum #== cRefNFTOutputDatum     -- C4
             ]
-
-toPBuiltinPair :: forall {a :: PType} {b :: PType} {s :: S}. (PIsData a, PIsData b) => Term s a -> Term s b -> Term s (PBuiltinPair (PAsData a) (PAsData b))
-toPBuiltinPair a b = pfromData $ pbuiltinPairFromTuple $ pdata $ ptuple # pdata a # pdata b
 
 ---------------------------------------------------- | Serializations | ----------------------------------------------------
 

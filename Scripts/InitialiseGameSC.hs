@@ -50,14 +50,14 @@ typedValidator = phoistAcyclic $ plam $ \ gameSettings initialization scriptCont
             txInfo <- pletFields @'["inputs", "outputs", "validRange"] scriptContext.txInfo
             let ownTxOutRef = pmatch scriptContext.purpose
                             $ \case PSpending txOutRef  -> pfield @"_0" # txOutRef
-                                    _                   -> ptraceError "ScriptPurpose is not PSpending! @validator"
+                                    _                   -> ptraceError "ScriptPurpose is not PSpending! @typedValidator"
 
                 ownCredential = pfield @"credential" #$ getOwnAddress # ownTxOutRef # txInfo.inputs
                 betAmount = getInputValue # ownCredential # txInfo.inputs                                               -- C1
 
                 currentTime = pmatch (pfield @"_0" #$ pfield @"from" # txInfo.validRange)
                             $ \case PFinite a   -> pfield @"_0" # a
-                                    _           -> ptraceError "Invalid LowerBound POSIXTime! @validator"
+                                    _           -> ptraceError "Invalid LowerBound POSIXTime! @typedValidator"
 
         -- Calculated variables
             PBluePlayer playerA'sNFT <- pmatch $ pfield @"player1" # gameSettings

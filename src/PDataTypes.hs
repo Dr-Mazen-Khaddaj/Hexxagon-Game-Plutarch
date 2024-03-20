@@ -147,12 +147,12 @@ instance PUnsafeLiftDecl  PRunGame where type PLifted PRunGame  = RunGame
 deriving via (DerivePConstantViaData RunGame PRunGame)
     instance (PConstantDecl RunGame)
 
-data PMetadata (s :: S) = PMetadata (Term s (PDataRecord    [ "metadata"     ':= PMap 'Unsorted PByteString PByteString
+data PMetadata (s :: S) = PMetadata (Term s (PDataRecord    [ "metadata"     ':= PMap 'Unsorted PByteString PData
                                                             , "versionNum"   ':= PInteger
                                                             , "extraData"    ':= PData
                                                             ] ))
                         deriving stock (Generic)
-                        deriving anyclass (PlutusType, PIsData, PEq, PShow)
+                        deriving anyclass (PlutusType, PDataFields, PIsData, PEq, PShow)
 
 instance DerivePlutusType PMetadata where type DPTStrat _        = PlutusTypeData
 instance PUnsafeLiftDecl  PMetadata where type PLifted PMetadata = Metadata
