@@ -5,7 +5,7 @@ module PDataTypes where
 
 import Plutarch.DataRepr (PDataRecord, PLabeledType ((:=)), PlutusTypeData, DerivePConstantViaData (DerivePConstantViaData), PDataFields)
 import Plutarch.Prelude (Term, S, Generic, PlutusType, PIsData, PEq, PShow, DerivePlutusType,DPTStrat, PInteger, PlutusTypeNewtype, (#==), pto, PBuiltinList, PData, PByteString)
-import Plutarch.Api.V2 (PCurrencySymbol, PTokenName, PMap, KeyGuarantees (Unsorted), PPOSIXTime)
+import Plutarch.Api.V2 (PCurrencySymbol, PTokenName, PMap, KeyGuarantees (Unsorted, Sorted), PPOSIXTime)
 import Plutarch.Lift (PUnsafeLiftDecl (..), PConstantDecl, DerivePConstantViaNewtype (DerivePConstantViaNewtype))
 import DataTypes (Player, Hexagon, Position, Board (..), Move, GameSettings, GameState, GameInfo, Initialization, RunGame, Metadata)
 import Instances ()
@@ -147,7 +147,7 @@ instance PUnsafeLiftDecl  PRunGame where type PLifted PRunGame  = RunGame
 deriving via (DerivePConstantViaData RunGame PRunGame)
     instance (PConstantDecl RunGame)
 
-data PMetadata (s :: S) = PMetadata (Term s (PDataRecord    [ "metadata"     ':= PMap 'Unsorted PByteString PData
+data PMetadata (s :: S) = PMetadata (Term s (PDataRecord    [ "metadata"     ':= PMap 'Sorted PByteString PData
                                                             , "versionNum"   ':= PInteger
                                                             , "extraData"    ':= PData
                                                             ] ))

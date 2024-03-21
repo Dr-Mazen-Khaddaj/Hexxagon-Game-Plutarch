@@ -9,14 +9,14 @@ module  RefNFTManagerSC ( typedValidator
 import  Plutarch
 import  Plutarch.Prelude
 import  Plutarch.Api.V2             hiding (scriptHash)
-import  Plutarch.Api.V1.AssocMap    ( plookup, pinsert, passertSorted, pforgetSorted )
+import  Plutarch.Api.V1.AssocMap    ( plookup, pinsert )
 import  Plutarch.Api.V1.Address     ( PCredential   )
 import  Plutarch.Maybe              ( pfromJust     )
 import  Plutarch.Unsafe             ( punsafeCoerce )
 import  Plutarch.Num                ( (#+)          )
 import  Plutarch.Extra.Field        ( pletAll       )
 import  PUtilities
-import  PDataTypes                  ( PPlayer (..), PMetadata (..) )
+import  PDataTypes                  ( PPlayer (..), PMetadata (..), PRunGame (..) )
 import  RunGameSC                   qualified
 import  Plutarch.Monadic            qualified as P
 
@@ -41,7 +41,8 @@ typedValidator = phoistAcyclic $ plam $ \ metadata _ scriptContext -> P.do
 -- Info from RunGameSC
     let inputTxOutRefFromRunGameSC = getInputUTxORef # RunGameSC.scriptCredential # txInfo.inputs
         scriptPurposeFromRunGameSC = pcon . PSpending $ pdcons # (pdata $ inputTxOutRefFromRunGameSC) # pdnil
-        winningPlayer = punsafeCoerce @_ @_ @PPlayer $ pfromJust #$ plookup # scriptPurposeFromRunGameSC # txInfo.redeemers
+        gameOver = punsafeCoerce $ pfromJust #$ plookup # scriptPurposeFromRunGameSC # txInfo.redeemers
+    PGameOver ((pfield @"player" #) -> winningPlayer) <- pmatch gameOver
     winnerNFT <- pletAll $ pmatch winningPlayer (\case PBluePlayer nft -> nft ; PRedPlayer nft -> nft)
     PTokenName winnerNFTName <- pmatch winnerNFT.name
 -- Calculated variables from RunGameSC
@@ -60,10 +61,11 @@ typedValidator = phoistAcyclic $ plam $ \ metadata _ scriptContext -> P.do
 
     metadata <- pletAll metadata
     let score = pmatch (plookup # pconstant "score" # metadata.metadata)
-            $ \ case PJust a -> a ; PNothing -> ptraceError "Can't find score @typedValidator"
+            $ \ case PJust a  -> pfromData $ punsafeCoerce @_ @_ @(PAsData PInteger) a
+                     PNothing -> ptraceError "Can't find score @typedValidator"
 -- Calculated variables from RefNFTManagerSC
-        newScore = punsafeCoerce @_ @_ @PData $ (punsafeCoerce @_ @_ @PInteger score) #+ 1
-        newMetadata = pcon . PMetadata  $  pdcons # (pdata . pforgetSorted $ pinsert # pconstant "score" # newScore #$ passertSorted # metadata.metadata)
+        newScore = punsafeCoerce . pdata $ score #+ 1
+        newMetadata = pcon . PMetadata  $  pdcons # (pdata $ pinsert # pconstant "score" # newScore # metadata.metadata)
                                         #$ pdcons # metadata.versionNum
                                         #$ pdcons # metadata.extraData
                                         #  pdnil

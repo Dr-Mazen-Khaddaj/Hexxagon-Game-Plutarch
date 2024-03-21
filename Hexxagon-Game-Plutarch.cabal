@@ -190,6 +190,7 @@ test-suite Hexxagon-Game-Plutarch-test
                     UnitTesting.TConstants
                     UnitTesting.TestInitialiseGameSC
                     UnitTesting.TestRunGameSC
+                    UnitTesting.TestRefNFTManagerSC
 
     -- other-extensions:
     build-depends:  Hexxagon-Game-Plutarch

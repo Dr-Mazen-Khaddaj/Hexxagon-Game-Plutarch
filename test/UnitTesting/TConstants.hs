@@ -15,6 +15,8 @@ module  UnitTesting.TConstants  ( alicePubKeyCredential
                                 , identifierNFT_A
                                 , identifierNFT_B
                                 , identifierNFT_C
+                                , refNFT_A
+                                , refNFT_B
                                 , playerA
                                 , playerB
                                 , playerC
@@ -32,6 +34,7 @@ import Testing.Tools
 import DataTypes (Player (BluePlayer, RedPlayer))
 import Plutarch.Prelude (plift)
 import RunGameSC qualified
+import UtilityFxs (bytesFromHex)
 
 --------------------------------------------------- Addresses
 
@@ -63,20 +66,26 @@ clayNFT     = makeAssetClass "currency-symbol-one" "clayNFT"
 bondNFT     = makeAssetClass "currency-symbol-two" "bondNFT"
 ticketNFT   = makeAssetClass "currency-symbol-two" "ticketNFT"
 
-identifierNFT_A, identifierNFT_B, identifierNFT_C :: AssetClass
+userNFTLabel, refNFTLabel :: BuiltinByteString
+userNFTLabel = toBuiltin $ bytesFromHex "000de140"
+refNFTLabel  = toBuiltin $ bytesFromHex "000643b0"
 
-identifierNFT_A = makeAssetClass "currency-symbol-identifier-A" "identifierNFT-A"
-identifierNFT_B = makeAssetClass "currency-symbol-identifier-B" "identifierNFT-B"
-identifierNFT_C = makeAssetClass "currency-symbol-identifier-C" "identifierNFT-C"
+identifierNFT_A, identifierNFT_B, identifierNFT_C, refNFT_A, refNFT_B :: AssetClass
+
+identifierNFT_A = makeAssetClass "currency-symbol-identifier-A" $ userNFTLabel <> "identifierNFT-A"
+identifierNFT_B = makeAssetClass "currency-symbol-identifier-B" $ userNFTLabel <> "identifierNFT-B"
+identifierNFT_C = makeAssetClass "currency-symbol-identifier-C" $ userNFTLabel <> "identifierNFT-C"
+refNFT_A        = makeAssetClass "currency-symbol-identifier-A" $ refNFTLabel  <> "identifierNFT-A"
+refNFT_B        = makeAssetClass "currency-symbol-identifier-B" $ refNFTLabel  <> "identifierNFT-B"
 
 --------------------------------------------------- Players
 playerA, playerB, playerC, playerX, playerY :: Player
 
-playerA = BluePlayer (CurrencySymbol "currency-symbol-identifier-A") (TokenName "identifierNFT-A")
-playerB = RedPlayer  (CurrencySymbol "currency-symbol-identifier-B") (TokenName "identifierNFT-B")
-playerC = RedPlayer  (CurrencySymbol "currency-symbol-identifier-C") (TokenName "identifierNFT-C")
-playerX = RedPlayer  (CurrencySymbol "currency-symbol-identifier-A") (TokenName "identifierNFT-A")
-playerY = BluePlayer (CurrencySymbol "currency-symbol-identifier-B") (TokenName "identifierNFT-B")
+playerA = BluePlayer (CurrencySymbol "currency-symbol-identifier-A") (TokenName $ userNFTLabel <> "identifierNFT-A")
+playerB = RedPlayer  (CurrencySymbol "currency-symbol-identifier-B") (TokenName $ userNFTLabel <> "identifierNFT-B")
+playerC = RedPlayer  (CurrencySymbol "currency-symbol-identifier-C") (TokenName $ userNFTLabel <> "identifierNFT-C")
+playerX = RedPlayer  (CurrencySymbol "currency-symbol-identifier-A") (TokenName $ userNFTLabel <> "identifierNFT-A")
+playerY = BluePlayer (CurrencySymbol "currency-symbol-identifier-B") (TokenName $ userNFTLabel <> "identifierNFT-B")
 
 --------------------------------------------------- POSIXTime
 
