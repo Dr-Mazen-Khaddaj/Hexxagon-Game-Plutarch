@@ -179,14 +179,7 @@ test-suite Hexxagon-Game-Plutarch-test
     import:         language, dependencies, test-dependencies
     main-is:        Main.hs
     type:           exitcode-stdio-1.0
-    other-modules:  Benchmark.Tools
-                    Benchmark.Types
-
-                    Testing.Tools
-                    Testing.TConstants
-                    Testing.Transactions
-
-                    UnitTesting.Tools
+    other-modules:  UnitTesting.Tools
                     UnitTesting.TConstants
                     UnitTesting.TestInitialiseGameSC
                     UnitTesting.TestRunGameSC
@@ -196,6 +189,4 @@ test-suite Hexxagon-Game-Plutarch-test
     build-depends:  Hexxagon-Game-Plutarch
 
     hs-source-dirs: test
-                    test/Testing
                     test/UnitTesting
-                    test/Benchmark

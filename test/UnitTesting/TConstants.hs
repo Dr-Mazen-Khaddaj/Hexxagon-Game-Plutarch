@@ -30,7 +30,7 @@ module  UnitTesting.TConstants  ( alicePubKeyCredential
 
 import PlutusLedgerApi.V2
 import PlutusLedgerApi.V1.Value (AssetClass)
-import Testing.Tools
+import UnitTesting.Tools
 import DataTypes (Player (BluePlayer, RedPlayer))
 import Plutarch.Prelude (plift)
 import RunGameSC qualified

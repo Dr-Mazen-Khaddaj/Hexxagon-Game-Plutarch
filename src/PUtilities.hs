@@ -36,6 +36,8 @@ import  Data.Text.Encoding          qualified as Text
 import  Data.ByteString.Lazy        qualified as LBS
 import  Data.ByteString.Base16      qualified as B16
 import  Data.ByteString.Short       qualified as SBS
+import System.Directory (doesDirectoryExist, createDirectory)
+import Control.Monad (unless)
 
 --------------------------------------------------- | Helper Functions | ---------------------------------------------------
 
@@ -187,11 +189,14 @@ scriptToCBOR = Text.decodeUtf8 . B16.encode . SBS.fromShort . serialiseScript
 
 writeScriptToFile :: Script -> String -> IO ()
 writeScriptToFile script name = do
+    dirExists <- doesDirectoryExist dir
+    unless dirExists $ createDirectory dir
     LBS.writeFile filepath content
     putStrLn $ "Wrote \ESC[94m" <> name <> "\ESC[0m to " <> filepath
     putStrLn $ "ScriptHash \ESC[93m" <> show (plift $ hashScript script) <> "\ESC[0m"
     where
-        filepath = "Hexxagon-Game-Atlas/Scripts/" <> name <> ".json"
+        dir = "Hexxagon-Game-Atlas/Scripts/"
+        filepath = dir <> name <> ".json"
         content  = encodePretty $ object pairs
         pairs    =  [ "type"        .= ("PlutusScriptV2" :: String)
                     , "description" .= name
