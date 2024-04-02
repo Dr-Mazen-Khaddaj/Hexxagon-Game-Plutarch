@@ -8,6 +8,7 @@ module  PUtilities  ( pwrapValidator
                     , pAnd'
                     , toPOutputDatum
                     , toPBuiltinPair
+                    , pheadSingleton
                     , elemNFT
                     , getOwnAddress
                     , getInputValue
@@ -36,8 +37,8 @@ import  Data.Text.Encoding          qualified as Text
 import  Data.ByteString.Lazy        qualified as LBS
 import  Data.ByteString.Base16      qualified as B16
 import  Data.ByteString.Short       qualified as SBS
-import System.Directory (doesDirectoryExist, createDirectory)
-import Control.Monad (unless)
+import  System.Directory            ( doesDirectoryExist, createDirectory )
+import  Control.Monad               ( unless )
 
 --------------------------------------------------- | Helper Functions | ---------------------------------------------------
 
@@ -53,6 +54,15 @@ toPOutputDatum d = pcon . POutputDatum $ pdcons @"outputDatum" # (pdata . pcon .
 
 toPBuiltinPair :: forall {a :: PType} {b :: PType} {s :: S}. (PIsData a, PIsData b) => Term s a -> Term s b -> Term s (PBuiltinPair (PAsData a) (PAsData b))
 toPBuiltinPair a b = pfromData $ pbuiltinPairFromTuple $ pdata $ ptuple # pdata a # pdata b
+
+---------------------------------------------------
+
+pheadSingleton :: (PListLike list, PElemConstraint list a) => Term s (list a :--> a)
+pheadSingleton = phoistAcyclic $ plam $ \xs ->
+    pelimList
+        (pelimList (\_ _ -> ptraceError "List contains more than one element."))
+        (ptraceError "List is empty.")
+        xs
 
 ---------------------------------------------------
 

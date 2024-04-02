@@ -7,18 +7,18 @@ module  RunGameSC   ( typedValidator
                     ) where
 
 import Plutarch.Prelude
-import Plutarch.Api.V2.Contexts
-import PDataTypes (PGameInfo(..), PRunGame (..), PMove, PBoard (PBoard), PHexagon (..), PPosition (..), PPlayer (..), PGameState (..))
-import Plutarch.Api.V2 ( PStakingCredential, PAddress(..), PMaybeData(PDNothing), PValidator, PScriptHash, PMap (PMap), PExtended (PFinite) )
-import Plutarch.Api.V1.Address (PCredential)
+import Plutarch.Api.V2          hiding (scriptHash)
+import Plutarch.Api.V1.Address  (PCredential)
+import Plutarch.Script          (Script)
+import Plutarch.Extra.Field     (pletAll)
+import Plutarch.Monadic         qualified as P
+import Plutarch.Num             ((#-), PNum (pabs), (#+))
+import Plutarch.Builtin         (ppairDataBuiltin)
+import Plutarch.Maybe           (pfromJust)
+import Plutarch.Unsafe          (punsafeCoerce)
 import PUtilities
-import Plutarch.Script (Script)
-import Plutarch.Extra.Field (pletAll)
-import Plutarch.Monadic qualified as P
-import Plutarch.Num ((#-), PNum (pabs), (#+))
-import DataTypes (Hexagon(..))
-import Plutarch.Builtin (ppairDataBuiltin)
-import Plutarch.Maybe (pfromJust)
+import PDataTypes
+import DataTypes                (Hexagon(..))
 
 ----------------------------------------------------------------------------------------------------------------------------
 {-  Conditions (Play Turn) :
@@ -36,7 +36,18 @@ import Plutarch.Maybe (pfromJust)
         2- Redeeming player is registered as a player in the game.
         3- Redeeming player is the Winner.
         4- Player's registered NFT is found in the input UTxOs.
-    Conditions (Draw) : undefined
+    Conditions (Draw) :
+        A - First claim:
+            1- Only 1 UTxO consumed from RunGameSC.
+            2- Game is Over
+            3- True Draw
+            4- Continuing Output: Own UTxO is sent to own smart contract.
+            5- Value is halved
+            6- correct Datum: Only second player left
+            7- Player's registered NFT is found in the input UTxOs.
+        B- Second claim:
+            1- Only one player left
+            2- Player's registered NFT is found in the input UTxOs.
     Conditions (TimeOut) :
         1- It is TimeOut
         2- Opponent claiming the win.
@@ -133,7 +144,63 @@ typedValidator = phoistAcyclic $ plam $ \ gameInfo runGame scriptContext ->
                     , elemNFT # registeredNFT.symbol # registeredNFT.name # inputs                                      -- C4
                     ]
 
-        PDraw _ -> ptraceError "Undefined"
+    {- Draw -}
+        PDraw _ -> P.do
+            PGameInfo gameInfo  <- pmatch gameInfo
+            gameInfo            <- pletFields @'["players","gameState"] gameInfo
+            players             <- plet $ pfromData gameInfo.players
+            pif (plength # players #== 2)
+                ( P.do
+                    scriptContext <- pletAll scriptContext
+                    txInfo <- pletFields @'["inputs", "outputs"] scriptContext.txInfo
+                    let ownTxOutRef = pmatch scriptContext.purpose
+                                    $ \case PSpending txOutRef  -> pfield @"_0" # txOutRef
+                                            _                   -> ptraceError "ScriptPurpose is not PSpending! @typedValidator"
+                    inputs <- plet txInfo.inputs
+                    ownAddress <- plet $ getOwnAddress # ownTxOutRef # inputs
+
+                    let ownCredential = pfield @"credential" #$ ownAddress
+                        ownValue = getInputValue # ownCredential # inputs                                                       -- C1
+                    PGame gameState     <- pmatch gameInfo.gameState
+                    gameState           <- pletFields @'["player'sTurn","board"] gameState
+                    PBoard boardMap     <- pmatch gameState.board
+                    PMap boardList      <- pmatch boardMap
+
+                    rHex <- plet $ pdata $ pconstant Red
+                    bHex <- plet $ pdata $ pconstant Blue
+                    emptyHex <- plet $ pdata $ pconstant Empty
+
+                    nearbyEmptyPositions <- plet $ pfoldr # (addNearbyPositions # emptyHex) # pnil # boardList
+                    let score = pfoldr  # ( plam $ \ block n -> P.do
+                                                hex <- plet $ psndBuiltin # block
+                                                let pos = pfstBuiltin # block
+                                                pif (hex #== rHex)
+                                                    (pif    (pelem # pos # nearbyEmptyPositions)                                -- C2
+                                                            (ptraceError "Game is not over yet!")
+                                                            (n #+ 1) )
+                                                    (pif (hex #== bHex) (n #- 1) n) )
+                                        # (0 :: Term s PInteger)
+                                        # boardList
+
+                        isDraw = score #== 0
+                    outputUTxO <- pletFields @'["value", "datum"] $ getOutputUTxO # ownAddress # txInfo.outputs                 -- C4
+                    POutputDatum outputDatum <- pmatch outputUTxO.datum
+                    PDatum (punsafeCoerce @_ @_ @PGameInfo -> pGameInfo) <- pmatch . pfromData $ pfield @"outputDatum" # outputDatum
+                    let pRemainingPlayer = pheadSingleton #$ pfromData $ pfield @"players" #$ pto pGameInfo
+                        pRedeemingPlayer = pheadSingleton #$ pfilter # (plam $ \ p -> pnot #$ p #== pRemainingPlayer) # players -- C6
+                    registeredNFT <- pletAll $ pmatch pRedeemingPlayer (\case PBluePlayer nft -> nft ; PRedPlayer nft -> nft)
+
+                    pAnd'   [ isDraw                                                                                            -- C3
+                            , ownValue #== outputUTxO.value <> outputUTxO.value                                                 -- C5
+                            , elemNFT # registeredNFT.symbol # registeredNFT.name # inputs                                      -- C7
+                            ]
+                )
+                ( P.do
+                    let redeemingPlayer = pheadSingleton # players                      -- C1
+                        inputs = pfield @"inputs" #$ pfield @"txInfo" # scriptContext
+                    registeredNFT <- pletAll $ pmatch redeemingPlayer (\case PBluePlayer nft -> nft ; PRedPlayer nft -> nft)
+                    elemNFT # registeredNFT.symbol # registeredNFT.name # inputs        -- C2
+                )
 
         PTimeOut _ -> P.do
             txInfo <- pletFields @'["inputs","validRange"] $ pfield @"txInfo" # scriptContext
